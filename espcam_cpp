@@ -1,99 +1,101 @@
 #include "esp_camera.h"
 #include <WiFi.h>
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
 
 const char* ssid = "sonu";
 const char* password = "123456789";
 
-// 👉 Put ESP32 robot IP here
-String robotIP = "192.168.137.13";
+// Static IP
+IPAddress local_IP(192,168,137,60);
+IPAddress gateway(192,168,137,1);
+IPAddress subnet(255,255,255,0);
 
-WebServer server(80);
+// Robot IP
+String robotIP = "192.168.137.50";
+
+AsyncWebServer server(80);
 
 // Camera pins (AI Thinker)
-#define PWDN_GPIO_NUM     32
-#define RESET_GPIO_NUM    -1
-#define XCLK_GPIO_NUM      0
-#define SIOD_GPIO_NUM     26
-#define SIOC_GPIO_NUM     27
-#define Y9_GPIO_NUM       35
-#define Y8_GPIO_NUM       34
-#define Y7_GPIO_NUM       39
-#define Y6_GPIO_NUM       36
-#define Y5_GPIO_NUM       21
-#define Y4_GPIO_NUM       19
-#define Y3_GPIO_NUM       18
-#define Y2_GPIO_NUM        5
-#define VSYNC_GPIO_NUM    25
-#define HREF_GPIO_NUM     23
-#define PCLK_GPIO_NUM     22
+#define PWDN_GPIO_NUM 32
+#define RESET_GPIO_NUM -1
+#define XCLK_GPIO_NUM 0
+#define SIOD_GPIO_NUM 26
+#define SIOC_GPIO_NUM 27
+#define Y9_GPIO_NUM 35
+#define Y8_GPIO_NUM 34
+#define Y7_GPIO_NUM 39
+#define Y6_GPIO_NUM 36
+#define Y5_GPIO_NUM 21
+#define Y4_GPIO_NUM 19
+#define Y3_GPIO_NUM 18
+#define Y2_GPIO_NUM 5
+#define VSYNC_GPIO_NUM 25
+#define HREF_GPIO_NUM 23
+#define PCLK_GPIO_NUM 22
 
-// Web page
-const char PAGE[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<body style="text-align:center;">
+// -------- WEB PAGE --------
+String page(){
+  String html = "<html><body style='text-align:center;font-family:sans-serif;'>";
 
-<h2>Robot Camera</h2>
+  html += "<h2>ESP32 Robot Camera</h2>";
+  html += "<img src='/stream' width='320'><br><br>";
 
-<img src="/stream" width="320"><br><br>
+  // HOLD CONTROL BUTTONS
+  html += "<button onmousedown=\"cmd('F')\" onmouseup=\"cmd('S')\" ";
+  html += "ontouchstart=\"cmd('F')\" ontouchend=\"cmd('S')\">Forward</button><br><br>";
 
-<button ontouchstart="send('F')" ontouchend="send('S')">Forward</button><br><br>
+  html += "<button onmousedown=\"cmd('L')\" onmouseup=\"cmd('S')\" ";
+  html += "ontouchstart=\"cmd('L')\" ontouchend=\"cmd('S')\">Left</button>";
 
-<button ontouchstart="send('L')" ontouchend="send('S')">Left</button>
-<button onclick="send('S')">Stop</button>
-<button ontouchstart="send('R')" ontouchend="send('S')">Right</button><br><br>
+  html += "<button onmousedown=\"cmd('S')\">Stop</button>";
 
-<button ontouchstart="send('B')" ontouchend="send('S')">Backward</button>
+  html += "<button onmousedown=\"cmd('R')\" onmouseup=\"cmd('S')\" ";
+  html += "ontouchstart=\"cmd('R')\" ontouchend=\"cmd('S')\">Right</button><br><br>";
 
-<br><br>
+  html += "<button onmousedown=\"cmd('B')\" onmouseup=\"cmd('S')\" ";
+  html += "ontouchstart=\"cmd('B')\" ontouchend=\"cmd('S')\">Backward</button><br><br>";
 
-<input type="range" min="0" max="255" value="200" onchange="setSpeed(this.value)">
+  html += "Speed:<br>";
+  html += "<input type='range' min='0' max='255' value='200' oninput=\"spd(this.value)\">";
 
-<script>
-function send(cmd){
-  fetch("http://ROBOT_IP/" + cmd);
+  html += "<script>";
+  html += "function cmd(c){ fetch('http://" + robotIP + "/'+c); }";
+  html += "function spd(v){ fetch('http://" + robotIP + "/speed?v='+v); }";
+  html += "</script>";
+
+  html += "</body></html>";
+  return html;
 }
 
-function setSpeed(val){
-  fetch("http://ROBOT_IP/speed?v=" + val);
-}
-</script>
+// -------- STREAM --------
+void stream(AsyncWebServerRequest *request){
+  AsyncWebServerResponse *response = request->beginChunkedResponse(
+    "multipart/x-mixed-replace; boundary=frame",
+    [](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
 
-</body>
-</html>
-)rawliteral";
+      camera_fb_t * fb = esp_camera_fb_get();
+      if (!fb) return 0;
 
-// Replace ROBOT_IP dynamically
-String htmlPage() {
-  String page = PAGE;
-  page.replace("ROBOT_IP", robotIP);
-  return page;
-}
+      size_t len = snprintf((char*)buffer, maxLen,
+        "--frame\r\nContent-Type: image/jpeg\r\n\r\n");
 
-// Stream handler
-void handleStream(){
-  WiFiClient client = server.client();
+      memcpy(buffer + len, fb->buf, fb->len);
+      len += fb->len;
 
-  String res = "HTTP/1.1 200 OK\r\n";
-  res += "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n\r\n";
-  server.sendContent(res);
+      buffer[len++] = '\r';
+      buffer[len++] = '\n';
 
-  while(client.connected()){
-    camera_fb_t * fb = esp_camera_fb_get();
-    if(!fb) continue;
+      esp_camera_fb_return(fb);
+      return len;
+    }
+  );
 
-    server.sendContent("--frame\r\n");
-    server.sendContent("Content-Type: image/jpeg\r\n\r\n");
-    server.sendContent((const char*)fb->buf, fb->len);
-    server.sendContent("\r\n");
-
-    esp_camera_fb_return(fb);
-    delay(30);
-  }
+  request->send(response);
 }
 
-void setup() {
+// -------- SETUP --------
+void setup(){
   Serial.begin(115200);
 
   camera_config_t config;
@@ -118,32 +120,33 @@ void setup() {
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
 
+  // FAST SETTINGS
   config.frame_size = FRAMESIZE_QQVGA;
-  config.jpeg_quality = 15;
-  config.fb_count = 2;
+  config.jpeg_quality = 20;
+  config.fb_count = 1;
 
-  if (esp_camera_init(&config) != ESP_OK) {
-    Serial.println("Camera failed");
+  if(esp_camera_init(&config) != ESP_OK){
+    Serial.println("Camera Fail");
     return;
   }
 
+  WiFi.config(local_IP, gateway, subnet);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+
+  while(WiFi.status()!=WL_CONNECTED){
     delay(500);
   }
 
   Serial.print("Camera IP: ");
   Serial.println(WiFi.localIP());
 
-  server.on("/", [](){
-    server.send(200, "text/html", htmlPage());
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
+    req->send(200,"text/html",page());
   });
 
-  server.on("/stream", HTTP_GET, handleStream);
+  server.on("/stream", HTTP_GET, stream);
 
   server.begin();
 }
 
-void loop() {
-  server.handleClient();
-}
+void loop(){}
