@@ -1,32 +1,32 @@
 #include <WiFi.h>
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
 
-const char* ssid = "YOUR_WIFI";
-const char* password = "YOUR_PASSWORD";
+const char* ssid = "sonu";
+const char* password = "123456789";
 
-WebServer server(80);
+AsyncWebServer server(80);
+
+// Static IP
+IPAddress local_IP(192,168,137,50);
+IPAddress gateway(192,168,137,1);
+IPAddress subnet(255,255,255,0);
 
 // Motor pins
 #define IN1 14
 #define IN2 27
 #define IN3 26
 #define IN4 25
-
 #define ENA 33
 #define ENB 32
 
-int speedValue = 200; // 0–255
+int speedValue = 200;
 
-// PWM setup
-const int freq = 1000;
-const int channelA = 0;
-const int channelB = 1;
-const int resolution = 8;
-
+// -------- MOTOR --------
 void setSpeed(int spd){
-  speedValue = constrain(spd, 0, 255);
-  ledcWrite(channelA, speedValue);
-  ledcWrite(channelB, speedValue);
+  speedValue = constrain(spd,0,255);
+  ledcWrite(ENA, speedValue);
+  ledcWrite(ENB, speedValue);
 }
 
 void stopMotors(){
@@ -56,6 +56,7 @@ void right(){
   digitalWrite(IN3,LOW); digitalWrite(IN4,HIGH);
 }
 
+// -------- SETUP --------
 void setup(){
   Serial.begin(115200);
 
@@ -64,39 +65,36 @@ void setup(){
   pinMode(IN3,OUTPUT);
   pinMode(IN4,OUTPUT);
 
-  // PWM setup
-  ledcSetup(channelA, freq, resolution);
-  ledcSetup(channelB, freq, resolution);
+  // PWM (ESP32 core v3+)
+  ledcAttach(ENA, 5000, 8);
+  ledcAttach(ENB, 5000, 8);
+  setSpeed(200);
 
-  ledcAttachPin(ENA, channelA);
-  ledcAttachPin(ENB, channelB);
-
-  setSpeed(speedValue);
-
+  WiFi.config(local_IP, gateway, subnet);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) delay(300);
 
+  while(WiFi.status()!=WL_CONNECTED){
+    delay(500);
+  }
+
+  Serial.println("Robot Ready");
   Serial.println(WiFi.localIP());
 
-  // Fast control endpoints
-  server.on("/F", [](){ forward(); server.send(200,"text",""); });
-  server.on("/B", [](){ backward(); server.send(200,"text",""); });
-  server.on("/L", [](){ left(); server.send(200,"text",""); });
-  server.on("/R", [](){ right(); server.send(200,"text",""); });
-  server.on("/S", [](){ stopMotors(); server.send(200,"text",""); });
+  // Routes
+  server.on("/F", HTTP_GET, [](AsyncWebServerRequest *req){ forward(); req->send(200,"text/plain","OK"); });
+  server.on("/B", HTTP_GET, [](AsyncWebServerRequest *req){ backward(); req->send(200,"text/plain","OK"); });
+  server.on("/L", HTTP_GET, [](AsyncWebServerRequest *req){ left(); req->send(200,"text/plain","OK"); });
+  server.on("/R", HTTP_GET, [](AsyncWebServerRequest *req){ right(); req->send(200,"text/plain","OK"); });
+  server.on("/S", HTTP_GET, [](AsyncWebServerRequest *req){ stopMotors(); req->send(200,"text/plain","OK"); });
 
-  // Speed control
-  server.on("/speed", [](){
-    if(server.hasArg("v")){
-      int v = server.arg("v").toInt();
-      setSpeed(v);
+  server.on("/speed", HTTP_GET, [](AsyncWebServerRequest *req){
+    if(req->hasParam("v")){
+      setSpeed(req->getParam("v")->value().toInt());
     }
-    server.send(200,"text","");
+    req->send(200,"text/plain","OK");
   });
 
   server.begin();
 }
 
-void loop(){
-  server.handleClient();
-}
+void loop(){}
