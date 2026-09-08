@@ -1,0 +1,2494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Robot Control Dashboard</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #0b1117;
+    color: #e8eef5;
+}
+
+header {
+    padding: 18px 24px;
+    background: #111a23;
+    border-bottom: 1px solid #263442;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+header p {
+    margin: 5px 0 0;
+    color: #8ea0b2;
+    font-size: 13px;
+}
+
+.header-status {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.status-pill {
+    padding: 7px 12px;
+    border-radius: 20px;
+    background: #222c36;
+    font-size: 12px;
+}
+
+.online {
+    color: #62e68b;
+}
+
+.offline {
+    color: #ff6875;
+}
+
+.container {
+    width: 96%;
+    max-width: 1500px;
+    margin: 20px auto;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+}
+
+.card {
+    background: #111a23;
+    border: 1px solid #263442;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 8px 25px rgba(0,0,0,.18);
+}
+
+.card h2 {
+    margin: 0 0 14px;
+    font-size: 17px;
+}
+
+.card h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #aebdcc;
+}
+
+.camera-card {
+    grid-column: span 7;
+}
+
+.control-card {
+    grid-column: span 5;
+}
+
+.sensor-card {
+    grid-column: span 12;
+}
+
+.graph-card {
+    grid-column: span 6;
+}
+
+.aircraft-card {
+    grid-column: span 6;
+}
+
+.status-card {
+    grid-column: span 12;
+}
+
+.camera-wrapper {
+    background: #05080b;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    min-height: 350px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#camera {
+    width: 100%;
+    height: 100%;
+    min-height: 350px;
+    object-fit: contain;
+    display: block;
+}
+
+.camera-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,.65);
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.controls {
+    display: grid;
+    gap: 12px;
+}
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+input[type="range"] {
+    width: 100%;
+}
+
+.value {
+    min-width: 55px;
+    text-align: center;
+    font-weight: bold;
+}
+
+button {
+    border: none;
+    border-radius: 8px;
+    padding: 11px 14px;
+    background: #253342;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+button:hover {
+    background: #34495a;
+}
+
+button:active {
+    transform: scale(.97);
+}
+
+.button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.motor-pad {
+    width: 220px;
+    margin: 10px auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.motor-pad button {
+    height: 55px;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.motor-pad .forward {
+    grid-column: 2;
+}
+
+.motor-pad .left {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.motor-pad .stop {
+    grid-column: 2;
+    grid-row: 2;
+    background: #9d3038;
+}
+
+.motor-pad .right {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+.motor-pad .back {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+.sensor-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+}
+
+.sensor-box {
+    background: #0c141c;
+    border: 1px solid #263442;
+    border-radius: 10px;
+    padding: 13px;
+}
+
+.sensor-box .label {
+    color: #8497aa;
+    font-size: 12px;
+}
+
+.sensor-box .number {
+    font-size: 22px;
+    font-weight: bold;
+    margin-top: 6px;
+}
+
+.graph-wrapper {
+    width: 100%;
+    height: 280px;
+    background: #080e14;
+    border-radius: 10px;
+    padding: 8px;
+}
+
+canvas.graph {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.aircraft-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+}
+
+#attitudeCanvas {
+    width: min(100%, 500px);
+    height: auto;
+    max-height: 500px;
+}
+
+.attitude-values {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.attitude-value {
+    background: #0c141c;
+    border: 1px solid #263442;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+}
+
+.attitude-value small {
+    display: block;
+    color: #8497aa;
+}
+
+.attitude-value strong {
+    font-size: 22px;
+}
+
+.device-status {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.device {
+    padding: 15px;
+    background: #0c141c;
+    border: 1px solid #263442;
+    border-radius: 10px;
+}
+
+.device-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.device-line {
+    font-size: 13px;
+    color: #92a4b5;
+    margin: 4px 0;
+}
+
+.dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 7px;
+    background: #ff4d5d;
+}
+
+.dot.ok {
+    background: #55e984;
+}
+
+@media(max-width: 1100px) {
+    .camera-card,
+    .control-card,
+    .graph-card,
+    .aircraft-card {
+        grid-column: span 12;
+    }
+
+    .sensor-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media(max-width: 700px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sensor-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .device-status {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1>ESP32 Robot Dashboard</h1>
+        <p>Motor + Sensors + ESP32-CAM</p>
+    </div>
+
+    <div class="header-status">
+        <div class="status-pill">
+            Motor:
+            <span id="motorHeader" class="offline">OFFLINE</span>
+        </div>
+
+        <div class="status-pill">
+            Sensors:
+            <span id="sensorHeader" class="offline">OFFLINE</span>
+        </div>
+
+        <div class="status-pill">
+            Camera:
+            <span id="cameraHeader" class="offline">OFFLINE</span>
+        </div>
+    </div>
+</header>
+
+
+<div class="container">
+
+<div class="grid">
+
+<!-- ================= CAMERA ================= -->
+
+<div class="card camera-card">
+
+    <h2>📷 Live Camera</h2>
+
+    <div class="camera-wrapper">
+
+        <div class="camera-label">
+            ESP32-CAM • 10.78.24.60
+        </div>
+
+        <img
+            id="camera"
+            src="http://10.78.24.60:81/stream"
+            alt="ESP32 Camera"
+            onerror="cameraError()"
+        >
+
+    </div>
+
+</div>
+
+
+<!-- ================= CONTROLS ================= -->
+
+<div class="card control-card">
+
+    <h2>🎮 Robot Control</h2>
+
+    <h3>Motor</h3>
+
+    <div class="motor-pad">
+
+        <button
+            class="forward"
+            onmousedown="startMotor('F')"
+            onmouseup="stopMotor()"
+            ontouchstart="startMotor('F')"
+            ontouchend="stopMotor()">
+            ▲
+        </button>
+
+        <button
+            class="left"
+            onmousedown="startMotor('L')"
+            onmouseup="stopMotor()"
+            ontouchstart="startMotor('L')"
+            ontouchend="stopMotor()">
+            ◀
+        </button>
+
+        <button
+            class="stop"
+            onclick="stopMotor()">
+            ■
+        </button>
+
+        <button
+            class="right"
+            onmousedown="startMotor('R')"
+            onmouseup="stopMotor()"
+            ontouchstart="startMotor('R')"
+            ontouchend="stopMotor()">
+            ▶
+        </button>
+
+        <button
+            class="back"
+            onmousedown="startMotor('B')"
+            onmouseup="stopMotor()"
+            ontouchstart="startMotor('B')"
+            ontouchend="stopMotor()">
+            ▼
+        </button>
+
+    </div>
+
+    <p>
+        Keyboard:
+        <b>W A S D</b> or
+        <b>Arrow Keys</b>
+    </p>
+
+    <h3>Motor Speed</h3>
+
+    <div class="slider-row">
+
+        <input
+            type="range"
+            id="speedSlider"
+            min="0"
+            max="255"
+            value="180"
+            oninput="changeSpeed(this.value)"
+        >
+
+        <span
+            class="value"
+            id="speedValue">
+            180
+        </span>
+
+    </div>
+
+    <hr>
+
+    <h3>Servo Pan</h3>
+
+    <div class="slider-row">
+
+        <input
+            type="range"
+            id="servoSlider"
+            min="20"
+            max="160"
+            value="90"
+            oninput="moveServo(this.value)"
+        >
+
+        <span
+            class="value"
+            id="servoValue">
+            90°
+        </span>
+
+    </div>
+
+    <div class="button-row">
+
+        <button onclick="setServo(30)">
+            Left 30°
+        </button>
+
+        <button onclick="setServo(90)">
+            Center 90°
+        </button>
+
+        <button onclick="setServo(150)">
+            Right 150°
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- ================= SENSOR CARDS ================= -->
+
+<div class="card sensor-card">
+
+    <h2>📊 Live Sensor Data</h2>
+
+    <div class="sensor-grid">
+
+        <div class="sensor-box">
+            <div class="label">Distance</div>
+            <div class="number">
+                <span id="distance">--</span> cm
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Temperature</div>
+            <div class="number">
+                <span id="temperature">--</span> °C
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Humidity</div>
+            <div class="number">
+                <span id="humidity">--</span> %
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">MQ Sensor</div>
+            <div class="number">
+                <span id="mq">--</span>
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Water</div>
+            <div class="number">
+                <span id="water">--</span>
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Acceleration</div>
+            <div class="number">
+                <span id="accelMagnitude">--</span>
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Gyroscope</div>
+            <div class="number">
+                <span id="gyroMagnitude">--</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================= DISTANCE GRAPH ================= -->
+
+<div class="card graph-card">
+
+    <h2>📈 Distance</h2>
+
+    <div class="graph-wrapper">
+        <canvas
+            id="distanceGraph"
+            class="graph">
+        </canvas>
+    </div>
+
+</div>
+
+
+<!-- ================= TEMPERATURE GRAPH ================= -->
+
+<div class="card graph-card">
+
+    <h2>🌡️ Temperature</h2>
+
+    <div class="graph-wrapper">
+        <canvas
+            id="temperatureGraph"
+            class="graph">
+        </canvas>
+    </div>
+
+</div>
+
+
+<!-- ================= HUMIDITY GRAPH ================= -->
+
+<div class="card graph-card">
+
+    <h2>💧 Humidity</h2>
+
+    <div class="graph-wrapper">
+        <canvas
+            id="humidityGraph"
+            class="graph">
+        </canvas>
+    </div>
+
+</div>
+
+
+<!-- ================= MQ GRAPH ================= -->
+
+<div class="card graph-card">
+
+    <h2>☁️ MQ Sensor</h2>
+
+    <div class="graph-wrapper">
+        <canvas
+            id="mqGraph"
+            class="graph">
+        </canvas>
+    </div>
+
+</div>
+
+
+<!-- ================= WATER GRAPH ================= -->
+
+<div class="card graph-card">
+
+    <h2>💦 Water Sensor</h2>
+
+    <div class="graph-wrapper">
+        <canvas
+            id="waterGraph"
+            class="graph">
+        </canvas>
+    </div>
+
+</div>
+
+
+<!-- ================= ACCEL GRAPH ================= -->
+
+<div class="card graph-card">
+
+    <h2>📐 Accelerometer X/Y/Z</h2>
+
+    <div class="graph-wrapper">
+        <canvas
+            id="accelGraph"
+            class="graph">
+        </canvas>
+    </div>
+
+</div>
+
+
+<!-- ================= GYRO GRAPH ================= -->
+
+<div class="card graph-card">
+
+    <h2>🔄 Gyroscope X/Y/Z</h2>
+
+    <div class="graph-wrapper">
+        <canvas
+            id="gyroGraph"
+            class="graph">
+        </canvas>
+    </div>
+
+</div>
+
+
+<!-- ================= AIRCRAFT DISPLAY ================= -->
+
+<div class="card aircraft-card">
+
+    <h2>✈️ Aircraft Attitude</h2>
+
+    <div class="aircraft-container">
+
+        <canvas
+            id="attitudeCanvas"
+            width="500"
+            height="500">
+        </canvas>
+
+    </div>
+
+    <div class="attitude-values">
+
+        <div class="attitude-value">
+            <small>ROLL</small>
+            <strong>
+                <span id="rollValue">0.0</span>°
+            </strong>
+        </div>
+
+        <div class="attitude-value">
+            <small>PITCH</small>
+            <strong>
+                <span id="pitchValue">0.0</span>°
+            </strong>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================= MPU RAW VALUES ================= -->
+
+<div class="card aircraft-card">
+
+    <h2>🧭 MPU6050 Raw Data</h2>
+
+    <div class="sensor-grid"
+         style="grid-template-columns:repeat(3,1fr)">
+
+        <div class="sensor-box">
+            <div class="label">Accel X</div>
+            <div class="number">
+                <span id="ax">--</span>
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Accel Y</div>
+            <div class="number">
+                <span id="ay">--</span>
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Accel Z</div>
+            <div class="number">
+                <span id="az">--</span>
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Gyro X</div>
+            <div class="number">
+                <span id="gx">--</span>
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Gyro Y</div>
+            <div class="number">
+                <span id="gy">--</span>
+            </div>
+        </div>
+
+        <div class="sensor-box">
+            <div class="label">Gyro Z</div>
+            <div class="number">
+                <span id="gz">--</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================= DEVICE STATUS ================= -->
+
+<div class="card status-card">
+
+    <h2>📡 Device Status</h2>
+
+    <div class="device-status">
+
+        <div class="device">
+
+            <div class="device-title">
+
+                <span
+                    id="motorDot"
+                    class="dot">
+                </span>
+
+                Motor ESP32
+
+            </div>
+
+            <div class="device-line">
+                IP:
+                <span id="motorIP">--</span>
+            </div>
+
+            <div class="device-line">
+                RSSI:
+                <span id="motorRSSI">--</span>
+            </div>
+
+            <div class="device-line">
+                Channel:
+                <span id="motorChannel">--</span>
+            </div>
+
+        </div>
+
+
+        <div class="device">
+
+            <div class="device-title">
+
+                <span
+                    id="sensorDot"
+                    class="dot">
+                </span>
+
+                Sensor ESP32
+
+            </div>
+
+            <div class="device-line">
+                IP:
+                <span id="sensorIP">--</span>
+            </div>
+
+            <div class="device-line">
+                RSSI:
+                <span id="sensorRSSI">--</span>
+            </div>
+
+            <div class="device-line">
+                Channel:
+                <span id="sensorChannel">--</span>
+            </div>
+
+        </div>
+
+
+        <div class="device">
+
+            <div class="device-title">
+
+                <span
+                    id="cameraDot"
+                    class="dot">
+                </span>
+
+                ESP32-CAM
+
+            </div>
+
+            <div class="device-line">
+                IP:
+                <span id="cameraIP">--</span>
+            </div>
+
+            <div class="device-line">
+                Servo:
+                <span id="cameraServo">--</span>
+            </div>
+
+            <div class="device-line">
+                RSSI:
+                <span id="cameraRSSI">--</span>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+</div>
+
+
+<script>
+
+/* =========================================================
+   ESP32 ADDRESSES
+   ========================================================= */
+
+const MOTOR_ESP = "http://10.78.24.50";
+const SENSOR_ESP = "http://10.78.24.51";
+const CAMERA_ESP = "http://10.78.24.60";
+
+
+/* =========================================================
+   GRAPH DATA
+   ========================================================= */
+
+const MAX_POINTS = 100;
+
+const history = {
+    distance: [],
+    temperature: [],
+    humidity: [],
+    mq: [],
+    water: [],
+    ax: [],
+    ay: [],
+    az: [],
+    gx: [],
+    gy: [],
+    gz: []
+};
+
+
+/* =========================================================
+   UTILITY
+   ========================================================= */
+
+function numberValue(value) {
+
+    const n = Number(value);
+
+    if (!Number.isFinite(n)) {
+        return 0;
+    }
+
+    return n;
+}
+
+
+function pushHistory(array, value) {
+
+    array.push(numberValue(value));
+
+    if (array.length > MAX_POINTS) {
+        array.shift();
+    }
+}
+
+
+/* =========================================================
+   CANVAS GRAPH
+   ========================================================= */
+
+function drawGraph(canvasId, datasets, options = {}) {
+
+    const canvas = document.getElementById(canvasId);
+
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+
+    const width = Math.max(300, Math.floor(rect.width));
+    const height = Math.max(180, Math.floor(rect.height));
+
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+
+    const ctx = canvas.getContext("2d");
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    ctx.clearRect(0, 0, width, height);
+
+    const left = 45;
+    const right = 12;
+    const top = 15;
+    const bottom = 28;
+
+    const graphWidth = width - left - right;
+    const graphHeight = height - top - bottom;
+
+
+    let allValues = [];
+
+    datasets.forEach(ds => {
+
+        ds.data.forEach(v => {
+
+            if (Number.isFinite(v)) {
+                allValues.push(v);
+            }
+
+        });
+
+    });
+
+
+    if (allValues.length === 0) return;
+
+
+    let min = options.min !== undefined
+        ? options.min
+        : Math.min(...allValues);
+
+    let max = options.max !== undefined
+        ? options.max
+        : Math.max(...allValues);
+
+
+    if (min === max) {
+
+        min -= 1;
+        max += 1;
+
+    }
+
+
+    const padding = (max - min) * 0.12;
+
+    if (options.min === undefined) {
+        min -= padding;
+    }
+
+    if (options.max === undefined) {
+        max += padding;
+    }
+
+
+    /* Grid */
+
+    ctx.font = "11px Arial";
+
+    for (let i = 0; i <= 5; i++) {
+
+        const y = top + (graphHeight * i / 5);
+
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(left + graphWidth, y);
+
+        ctx.strokeStyle = "#263442";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+
+        const value =
+            max - ((max - min) * i / 5);
+
+        ctx.fillStyle = "#718294";
+        ctx.textAlign = "right";
+        ctx.fillText(
+            value.toFixed(1),
+            left - 7,
+            y + 4
+        );
+
+    }
+
+
+    /* X axis */
+
+    ctx.beginPath();
+    ctx.moveTo(left, top + graphHeight);
+    ctx.lineTo(left + graphWidth, top + graphHeight);
+
+    ctx.strokeStyle = "#536577";
+    ctx.stroke();
+
+
+    /* Lines */
+
+    datasets.forEach(ds => {
+
+        const data = ds.data;
+
+        if (data.length < 2) return;
+
+
+        ctx.beginPath();
+
+        data.forEach((value, index) => {
+
+            const x =
+                left +
+                (index / (MAX_POINTS - 1)) *
+                graphWidth;
+
+            const y =
+                top +
+                graphHeight -
+                ((value - min) / (max - min)) *
+                graphHeight;
+
+
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+
+        });
+
+
+        ctx.strokeStyle = ds.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+    });
+
+
+    /* Legend */
+
+    let legendX = left;
+
+    datasets.forEach(ds => {
+
+        ctx.fillStyle = ds.color;
+
+        ctx.fillRect(
+            legendX,
+            2,
+            10,
+            10
+        );
+
+        ctx.fillStyle = "#aebdcc";
+
+        ctx.textAlign = "left";
+
+        ctx.fillText(
+            ds.name,
+            legendX + 15,
+            11
+        );
+
+        legendX += 70;
+
+    });
+
+}
+
+
+/* =========================================================
+   DRAW ALL GRAPHS
+   ========================================================= */
+
+function drawAllGraphs() {
+
+    drawGraph(
+        "distanceGraph",
+        [
+            {
+                name: "Distance",
+                data: history.distance,
+                color: "#45b7ff"
+            }
+        ],
+        {
+            min: 0
+        }
+    );
+
+
+    drawGraph(
+        "temperatureGraph",
+        [
+            {
+                name: "Temperature",
+                data: history.temperature,
+                color: "#ff725c"
+            }
+        ]
+    );
+
+
+    drawGraph(
+        "humidityGraph",
+        [
+            {
+                name: "Humidity",
+                data: history.humidity,
+                color: "#56d6a1"
+            }
+        ],
+        {
+            min: 0,
+            max: 100
+        }
+    );
+
+
+    drawGraph(
+        "mqGraph",
+        [
+            {
+                name: "MQ",
+                data: history.mq,
+                color: "#d89cff"
+            }
+        ],
+        {
+            min: 0,
+            max: 4095
+        }
+    );
+
+
+    drawGraph(
+        "waterGraph",
+        [
+            {
+                name: "Water",
+                data: history.water,
+                color: "#55d9e8"
+            }
+        ],
+        {
+            min: 0,
+            max: 4095
+        }
+    );
+
+
+    drawGraph(
+        "accelGraph",
+        [
+            {
+                name: "X",
+                data: history.ax,
+                color: "#ff6b6b"
+            },
+            {
+                name: "Y",
+                data: history.ay,
+                color: "#6be58d"
+            },
+            {
+                name: "Z",
+                data: history.az,
+                color: "#65a9ff"
+            }
+        ]
+    );
+
+
+    drawGraph(
+        "gyroGraph",
+        [
+            {
+                name: "X",
+                data: history.gx,
+                color: "#ff6b6b"
+            },
+            {
+                name: "Y",
+                data: history.gy,
+                color: "#6be58d"
+            },
+            {
+                name: "Z",
+                data: history.gz,
+                color: "#65a9ff"
+            }
+        ]
+    );
+
+}
+
+
+/* =========================================================
+   SENSOR DATA
+   ========================================================= */
+
+async function getSensorData() {
+
+    try {
+
+        const response =
+            await fetch(
+                SENSOR_ESP + "/data",
+                {
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok) {
+            throw new Error("Sensor HTTP error");
+        }
+
+        const data = await response.json();
+
+
+        /* Sensor cards */
+
+        document.getElementById("distance").textContent =
+            numberValue(data.distance).toFixed(1);
+
+        document.getElementById("temperature").textContent =
+            numberValue(data.temperature).toFixed(1);
+
+        document.getElementById("humidity").textContent =
+            numberValue(data.humidity).toFixed(1);
+
+        document.getElementById("mq").textContent =
+            numberValue(data.mq).toFixed(0);
+
+        document.getElementById("water").textContent =
+            numberValue(data.water).toFixed(0);
+
+        document.getElementById("accelMagnitude").textContent =
+            numberValue(data.accelMagnitude).toFixed(2);
+
+        document.getElementById("gyroMagnitude").textContent =
+            numberValue(data.gyroMagnitude).toFixed(2);
+
+
+        /* MPU */
+
+        const ax = numberValue(data.accel?.x);
+        const ay = numberValue(data.accel?.y);
+        const az = numberValue(data.accel?.z);
+
+        const gx = numberValue(data.gyro?.x);
+        const gy = numberValue(data.gyro?.y);
+        const gz = numberValue(data.gyro?.z);
+
+
+        document.getElementById("ax").textContent =
+            ax.toFixed(2);
+
+        document.getElementById("ay").textContent =
+            ay.toFixed(2);
+
+        document.getElementById("az").textContent =
+            az.toFixed(2);
+
+        document.getElementById("gx").textContent =
+            gx.toFixed(2);
+
+        document.getElementById("gy").textContent =
+            gy.toFixed(2);
+
+        document.getElementById("gz").textContent =
+            gz.toFixed(2);
+
+
+        /* History */
+
+        pushHistory(history.distance, data.distance);
+        pushHistory(history.temperature, data.temperature);
+        pushHistory(history.humidity, data.humidity);
+        pushHistory(history.mq, data.mq);
+        pushHistory(history.water, data.water);
+
+        pushHistory(history.ax, ax);
+        pushHistory(history.ay, ay);
+        pushHistory(history.az, az);
+
+        pushHistory(history.gx, gx);
+        pushHistory(history.gy, gy);
+        pushHistory(history.gz, gz);
+
+
+        /* Aircraft */
+
+        updateAircraft(ax, ay, az, gx, gy);
+
+
+        setDeviceOnline(
+            "sensorHeader",
+            "sensorDot",
+            true
+        );
+
+    }
+
+    catch(error) {
+
+        console.log("Sensor:", error);
+
+        setDeviceOnline(
+            "sensorHeader",
+            "sensorDot",
+            false
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   AIRCRAFT ATTITUDE
+   ========================================================= */
+
+let roll = 0;
+let pitch = 0;
+
+let previousTime = performance.now();
+
+
+function updateAircraft(ax, ay, az, gx, gy) {
+
+    const now = performance.now();
+
+    let dt =
+        (now - previousTime) / 1000;
+
+    previousTime = now;
+
+    if (dt <= 0 || dt > 1) {
+        dt = 0.02;
+    }
+
+
+    /*
+       Accelerometer angle.
+
+       MPU6050 values from the Arduino
+       library are normally in g.
+    */
+
+    let accelRoll =
+        Math.atan2(ay, az) *
+        180 /
+        Math.PI;
+
+
+    let accelPitch =
+        Math.atan2(
+            -ax,
+            Math.sqrt(ay * ay + az * az)
+        ) *
+        180 /
+        Math.PI;
+
+
+    /*
+       Complementary filter.
+
+       Gyroscope values are assumed
+       to be deg/s.
+    */
+
+    const gyroRoll =
+        roll + gx * dt;
+
+    const gyroPitch =
+        pitch + gy * dt;
+
+
+    const alpha = 0.96;
+
+
+    roll =
+        alpha * gyroRoll +
+        (1 - alpha) * accelRoll;
+
+
+    pitch =
+        alpha * gyroPitch +
+        (1 - alpha) * accelPitch;
+
+
+    /* Limit display */
+
+    roll = Math.max(-90, Math.min(90, roll));
+
+    pitch = Math.max(-90, Math.min(90, pitch));
+
+
+    document.getElementById("rollValue")
+        .textContent = roll.toFixed(1);
+
+    document.getElementById("pitchValue")
+        .textContent = pitch.toFixed(1);
+
+
+    drawAircraft();
+
+}
+
+
+/* =========================================================
+   AIRCRAFT ARTIFICIAL HORIZON
+   ========================================================= */
+
+function drawAircraft() {
+
+    const canvas =
+        document.getElementById("attitudeCanvas");
+
+    const ctx =
+        canvas.getContext("2d");
+
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const cx = w / 2;
+    const cy = h / 2;
+
+    const radius =
+        Math.min(w, h) * 0.42;
+
+
+    ctx.clearRect(
+        0,
+        0,
+        w,
+        h
+    );
+
+
+    /*
+       Outer circle
+    */
+
+    ctx.save();
+
+    ctx.beginPath();
+
+    ctx.arc(
+        cx,
+        cy,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.clip();
+
+
+    /*
+       Aircraft horizon.
+
+       Pitch moves the horizon vertically.
+
+       Roll rotates the complete horizon.
+    */
+
+    ctx.save();
+
+    ctx.translate(cx, cy);
+
+    ctx.rotate(
+        -roll * Math.PI / 180
+    );
+
+
+    const pitchPixels =
+        pitch * 5;
+
+
+    /*
+       Sky
+    */
+
+    ctx.fillStyle = "#1976a8";
+
+    ctx.fillRect(
+        -w,
+        -h * 2 + pitchPixels,
+        w * 2,
+        h * 2
+    );
+
+
+    /*
+       Ground
+    */
+
+    ctx.fillStyle = "#8b5a32";
+
+    ctx.fillRect(
+        -w,
+        pitchPixels,
+        w * 2,
+        h * 2
+    );
+
+
+    /*
+       Horizon
+    */
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 4;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        -w,
+        pitchPixels
+    );
+
+    ctx.lineTo(
+        w,
+        pitchPixels
+    );
+
+    ctx.stroke();
+
+
+    /*
+       Pitch ladder
+    */
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.fillStyle = "#ffffff";
+    ctx.lineWidth = 2;
+
+    for (
+        let angle = -30;
+        angle <= 30;
+        angle += 10
+    ) {
+
+        if (angle === 0) continue;
+
+
+        const y =
+            pitchPixels -
+            angle * 5;
+
+
+        const lineWidth =
+            angle % 20 === 0
+            ? 90
+            : 50;
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            -lineWidth,
+            y
+        );
+
+        ctx.lineTo(
+            lineWidth,
+            y
+        );
+
+        ctx.stroke();
+
+
+        ctx.font =
+            "14px Arial";
+
+        ctx.textAlign =
+            "center";
+
+
+        ctx.fillText(
+            Math.abs(angle),
+            0,
+            y - 5
+        );
+
+    }
+
+
+    ctx.restore();
+
+
+    /*
+       Aircraft fixed center
+    */
+
+    ctx.strokeStyle = "#ffd84d";
+    ctx.lineWidth = 6;
+
+    ctx.lineCap = "round";
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        cx - 105,
+        cy
+    );
+
+    ctx.lineTo(
+        cx - 30,
+        cy
+    );
+
+    ctx.moveTo(
+        cx + 30,
+        cy
+    );
+
+    ctx.lineTo(
+        cx + 105,
+        cy
+    );
+
+    ctx.stroke();
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        cx,
+        cy - 20
+    );
+
+    ctx.lineTo(
+        cx,
+        cy + 20
+    );
+
+    ctx.stroke();
+
+
+    /*
+       Center dot
+    */
+
+    ctx.fillStyle =
+        "#ffd84d";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        cx,
+        cy,
+        6,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    ctx.restore();
+
+
+    /*
+       Outer ring
+    */
+
+    ctx.strokeStyle =
+        "#d8e2eb";
+
+    ctx.lineWidth = 5;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        cx,
+        cy,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.stroke();
+
+
+    /*
+       Bank scale
+    */
+
+    ctx.save();
+
+    ctx.translate(
+        cx,
+        cy
+    );
+
+
+    for (
+        let angle = -60;
+        angle <= 60;
+        angle += 10
+    ) {
+
+        const rad =
+            angle * Math.PI / 180;
+
+
+        const r1 =
+            radius - 5;
+
+        const r2 =
+            angle % 30 === 0
+            ? radius - 30
+            : radius - 18;
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            Math.sin(rad) * r1,
+            -Math.cos(rad) * r1
+        );
+
+        ctx.lineTo(
+            Math.sin(rad) * r2,
+            -Math.cos(rad) * r2
+        );
+
+        ctx.strokeStyle =
+            "#ffffff";
+
+        ctx.lineWidth =
+            angle % 30 === 0
+            ? 4
+            : 2;
+
+        ctx.stroke();
+
+    }
+
+
+    /*
+       Current roll marker
+    */
+
+    const markerRad =
+        -roll * Math.PI / 180;
+
+
+    const markerR =
+        radius + 2;
+
+
+    ctx.fillStyle =
+        "#ffd84d";
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        Math.sin(markerRad) * markerR,
+        -Math.cos(markerRad) * markerR
+    );
+
+    ctx.lineTo(
+        Math.sin(markerRad) * (markerR - 20) - 8,
+        -Math.cos(markerRad) * (markerR - 20)
+    );
+
+    ctx.lineTo(
+        Math.sin(markerRad) * (markerR - 20) + 8,
+        -Math.cos(markerRad) * (markerR - 20)
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    ctx.restore();
+
+}
+
+
+/* =========================================================
+   SERVO
+   ========================================================= */
+
+let servoTimer = null;
+
+
+function moveServo(angle) {
+
+    document.getElementById("servoValue")
+        .textContent =
+        angle + "°";
+
+
+    clearTimeout(servoTimer);
+
+
+    servoTimer = setTimeout(
+        () => setServo(angle),
+        50
+    );
+
+}
+
+
+async function setServo(angle) {
+
+    angle =
+        Math.max(
+            20,
+            Math.min(
+                160,
+                Number(angle)
+            )
+        );
+
+
+    document.getElementById("servoSlider")
+        .value = angle;
+
+    document.getElementById("servoValue")
+        .textContent =
+        angle + "°";
+
+
+    try {
+
+        await fetch(
+            CAMERA_ESP +
+            "/servo?angle=" +
+            angle,
+            {
+                cache: "no-store"
+            }
+        );
+
+    }
+
+    catch(error) {
+
+        console.log(
+            "Servo:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   MOTOR
+   ========================================================= */
+
+let motorInterval = null;
+let currentMotorCommand = "S";
+
+
+function motorCommand(command) {
+
+    currentMotorCommand =
+        command;
+
+
+    fetch(
+        MOTOR_ESP +
+        "/" +
+        command,
+        {
+            cache: "no-store"
+        }
+    ).catch(
+        error =>
+            console.log(
+                "Motor:",
+                error
+            )
+    );
+
+}
+
+
+function startMotor(command) {
+
+    stopMotor();
+
+    currentMotorCommand =
+        command;
+
+    motorCommand(command);
+
+
+    motorInterval =
+        setInterval(
+            () => {
+
+                motorCommand(
+                    currentMotorCommand
+                );
+
+            },
+            150
+        );
+
+}
+
+
+function stopMotor() {
+
+    if (motorInterval) {
+
+        clearInterval(
+            motorInterval
+        );
+
+        motorInterval = null;
+
+    }
+
+
+    currentMotorCommand =
+        "S";
+
+
+    motorCommand("S");
+
+}
+
+
+function changeSpeed(value) {
+
+    document.getElementById("speedValue")
+        .textContent = value;
+
+
+    fetch(
+        MOTOR_ESP +
+        "/speed?v=" +
+        value,
+        {
+            cache: "no-store"
+        }
+    ).catch(
+        error =>
+            console.log(
+                "Speed:",
+                error
+            )
+    );
+
+}
+
+
+/* =========================================================
+   KEYBOARD CONTROL
+   ========================================================= */
+
+const keys = {};
+
+
+document.addEventListener(
+    "keydown",
+    function(event) {
+
+        const key =
+            event.key.toLowerCase();
+
+
+        if (
+            key === "w" ||
+            key === "a" ||
+            key === "s" ||
+            key === "d" ||
+            event.key === "ArrowUp" ||
+            event.key === "ArrowDown" ||
+            event.key === "ArrowLeft" ||
+            event.key === "ArrowRight"
+        ) {
+
+            event.preventDefault();
+
+        }
+
+
+        if (keys[key]) return;
+
+        keys[key] = true;
+
+
+        if (
+            key === "w" ||
+            event.key === "ArrowUp"
+        ) {
+
+            startMotor("F");
+
+        }
+
+        else if (
+            key === "s" ||
+            event.key === "ArrowDown"
+        ) {
+
+            startMotor("B");
+
+        }
+
+        else if (
+            key === "a" ||
+            event.key === "ArrowLeft"
+        ) {
+
+            startMotor("L");
+
+        }
+
+        else if (
+            key === "d" ||
+            event.key === "ArrowRight"
+        ) {
+
+            startMotor("R");
+
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "keyup",
+    function(event) {
+
+        const key =
+            event.key.toLowerCase();
+
+        keys[key] = false;
+
+        stopMotor();
+
+    }
+);
+
+
+/* =========================================================
+   DEVICE STATUS
+   ========================================================= */
+
+function setDeviceOnline(
+    headerId,
+    dotId,
+    online
+) {
+
+    const header =
+        document.getElementById(
+            headerId
+        );
+
+    const dot =
+        document.getElementById(
+            dotId
+        );
+
+
+    if (online) {
+
+        header.textContent =
+            "ONLINE";
+
+        header.className =
+            "online";
+
+        dot.classList.add(
+            "ok"
+        );
+
+    }
+
+    else {
+
+        header.textContent =
+            "OFFLINE";
+
+        header.className =
+            "offline";
+
+        dot.classList.remove(
+            "ok"
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   MOTOR STATUS
+   ========================================================= */
+
+async function getMotorStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                MOTOR_ESP +
+                "/status",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+            throw new Error(
+                "Motor status error"
+            );
+        }
+
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "motorIP"
+        ).textContent =
+            data.ip || "10.78.24.50";
+
+
+        document.getElementById(
+            "motorRSSI"
+        ).textContent =
+            data.rssi !== undefined
+            ? data.rssi + " dBm"
+            : "--";
+
+
+        document.getElementById(
+            "motorChannel"
+        ).textContent =
+            data.channel || "--";
+
+
+        setDeviceOnline(
+            "motorHeader",
+            "motorDot",
+            true
+        );
+
+    }
+
+    catch(error) {
+
+        setDeviceOnline(
+            "motorHeader",
+            "motorDot",
+            false
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   CAMERA STATUS
+   ========================================================= */
+
+async function getCameraStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                CAMERA_ESP +
+                "/status",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+            throw new Error(
+                "Camera status error"
+            );
+        }
+
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "cameraIP"
+        ).textContent =
+            data.ip || "10.78.24.60";
+
+
+        document.getElementById(
+            "cameraRSSI"
+        ).textContent =
+            data.rssi !== undefined
+            ? data.rssi + " dBm"
+            : "--";
+
+
+        /*
+           New ESP32-CAM firmware
+           sends data.servo.
+        */
+
+        if (
+            data.servo !== undefined
+        ) {
+
+            const angle =
+                Number(data.servo);
+
+
+            document.getElementById(
+                "cameraServo"
+            ).textContent =
+                angle + "°";
+
+
+            /*
+               Only update slider when
+               user is not currently moving it.
+            */
+
+            if (
+                document.activeElement.id !==
+                "servoSlider"
+            ) {
+
+                document.getElementById(
+                    "servoSlider"
+                ).value = angle;
+
+                document.getElementById(
+                    "servoValue"
+                ).textContent =
+                    angle + "°";
+
+            }
+
+        }
+
+
+        setDeviceOnline(
+            "cameraHeader",
+            "cameraDot",
+            true
+        );
+
+    }
+
+    catch(error) {
+
+        setDeviceOnline(
+            "cameraHeader",
+            "cameraDot",
+            false
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   CAMERA ERROR
+   ========================================================= */
+
+function cameraError() {
+
+    setDeviceOnline(
+        "cameraHeader",
+        "cameraDot",
+        false
+    );
+
+}
+
+
+/* =========================================================
+   STOP ROBOT WHEN PAGE IS HIDDEN
+   ========================================================= */
+
+window.addEventListener(
+    "blur",
+    stopMotor
+);
+
+
+document.addEventListener(
+    "visibilitychange",
+    function() {
+
+        if (
+            document.hidden
+        ) {
+
+            stopMotor();
+
+        }
+
+    }
+);
+
+
+window.addEventListener(
+    "beforeunload",
+    stopMotor
+);
+
+
+/* =========================================================
+   RESIZE
+   ========================================================= */
+
+window.addEventListener(
+    "resize",
+    drawAllGraphs
+);
+
+
+/* =========================================================
+   STARTUP
+   ========================================================= */
+
+drawAircraft();
+
+drawAllGraphs();
+
+
+/*
+   Sensor data:
+   200 ms = 5 readings/sec
+*/
+
+setInterval(
+    getSensorData,
+    200
+);
+
+
+/*
+   Device status:
+   2 sec
+*/
+
+setInterval(
+    getMotorStatus,
+    2000
+);
+
+setInterval(
+    getCameraStatus,
+    2000
+);
+
+
+/*
+   Immediate first calls
+*/
+
+getSensorData();
+getMotorStatus();
+getCameraStatus();
+
+
+</script>
+
+</body>
+</html>
