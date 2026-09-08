@@ -1110,6 +1110,19 @@ function drawGraph(canvasId, datasets, options = {}) {
 
         if (data.length < 2) return;
 
+        /*
+           FIX: scale x by the number of points
+           actually collected so far (data.length - 1),
+           not by the fixed MAX_POINTS - 1.
+
+           The old code always divided by 99, so with
+           only a handful of readings the whole line was
+           squeezed into a few pixels near the left edge
+           and looked empty until ~100 readings (about
+           20 seconds at the 200ms poll rate) had arrived.
+        */
+
+        const denom = data.length - 1;
 
         ctx.beginPath();
 
@@ -1117,7 +1130,7 @@ function drawGraph(canvasId, datasets, options = {}) {
 
             const x =
                 left +
-                (index / (MAX_POINTS - 1)) *
+                (denom === 0 ? 0 : index / denom) *
                 graphWidth;
 
             const y =
@@ -1406,6 +1419,17 @@ async function getSensorData() {
             "sensorDot",
             true
         );
+
+
+        /*
+           FIX: redraw the graphs every time new
+           data arrives. Previously drawAllGraphs()
+           was only called once on startup and on
+           window resize, so the lines never updated
+           after the first (empty) paint.
+        */
+
+        drawAllGraphs();
 
     }
 
