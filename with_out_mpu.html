@@ -1,0 +1,2135 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+   content="width=device-width, initial-scale=1.0">
+
+<title>ESP32 Robot Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #101318;
+    color: white;
+}
+
+header {
+    background: #181d24;
+    padding: 18px 25px;
+    border-bottom: 1px solid #303640;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 23px;
+}
+
+.connection {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: red;
+}
+
+.dot.online {
+    background: #00ff66;
+}
+
+.container {
+    max-width: 1500px;
+    margin: auto;
+    padding: 20px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(350px, 1fr));
+
+    gap: 20px;
+}
+
+.card {
+    background: #181d24;
+    border: 1px solid #303640;
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.card h2 {
+    margin-top: 0;
+    color: #00d9ff;
+    font-size: 19px;
+}
+
+
+/* =========================================================
+   CAMERA
+   ========================================================= */
+
+.camera {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+
+    background: #000;
+
+    border-radius: 10px;
+
+    overflow: hidden;
+}
+
+.camera img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+}
+
+
+/* =========================================================
+   MOTOR CONTROL
+   ========================================================= */
+
+.controls {
+    width: 270px;
+    margin: auto;
+
+    display: grid;
+
+    grid-template-columns:
+        1fr 1fr 1fr;
+
+    gap: 10px;
+}
+
+button {
+    border: none;
+
+    background: #29313c;
+    color: white;
+
+    border-radius: 10px;
+
+    padding: 17px;
+
+    font-size: 18px;
+
+    cursor: pointer;
+
+    user-select: none;
+
+    -webkit-user-select: none;
+
+    touch-action: none;
+}
+
+button:hover {
+    background: #3a4553;
+}
+
+button:active {
+    transform: scale(0.96);
+}
+
+.move-button {
+    min-height: 70px;
+    font-size: 28px;
+}
+
+.stop-button {
+    background: #c62828;
+}
+
+.stop-button:hover {
+    background: #e53935;
+}
+
+.speed-box {
+    margin-top: 25px;
+}
+
+.speed-box input {
+    width: 100%;
+}
+
+.speed-value {
+    text-align: center;
+    font-size: 20px;
+    margin-top: 8px;
+}
+
+
+/* =========================================================
+   SERVO
+   ========================================================= */
+
+.servo-buttons {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 10px;
+
+    margin-top: 15px;
+}
+
+.servo-slider {
+    width: 100%;
+    margin-top: 20px;
+}
+
+
+/* =========================================================
+   SENSOR VALUES
+   ========================================================= */
+
+.sensor-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 12px;
+}
+
+.sensor {
+    background: #222832;
+
+    border-radius: 9px;
+
+    padding: 15px;
+
+    text-align: center;
+}
+
+.sensor-name {
+    color: #aaa;
+
+    font-size: 13px;
+}
+
+.sensor-value {
+    font-size: 27px;
+
+    font-weight: bold;
+
+    margin-top: 8px;
+}
+
+
+/* =========================================================
+   GRAPHS
+   ========================================================= */
+
+.graph-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fit, minmax(450px, 1fr));
+
+    gap: 20px;
+
+    margin-top: 20px;
+}
+
+.graph-card {
+    background: #181d24;
+
+    border: 1px solid #303640;
+
+    border-radius: 12px;
+
+    padding: 18px;
+}
+
+.graph-card h2 {
+    margin-top: 0;
+
+    color: #00d9ff;
+
+    font-size: 18px;
+}
+
+.chart-container {
+    position: relative;
+
+    height: 300px;
+}
+
+
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+.status {
+    background: #222832;
+
+    border-radius: 8px;
+
+    padding: 12px;
+
+    text-align: center;
+
+    margin-bottom: 12px;
+}
+
+.online {
+    color: #00ff66;
+}
+
+.offline {
+    color: #ff4444;
+}
+
+.info {
+    line-height: 1.9;
+
+    color: #aaa;
+}
+
+.info span {
+    color: white;
+
+    font-weight: bold;
+}
+
+
+/* =========================================================
+   CLEAR BUTTON
+   ========================================================= */
+
+.clear-button {
+    margin-top: 10px;
+
+    width: 100%;
+
+    font-size: 15px;
+
+    padding: 11px;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:600px) {
+
+    header {
+        padding: 15px;
+    }
+
+    header h1 {
+        font-size: 17px;
+    }
+
+    .container {
+        padding: 10px;
+    }
+
+    .graph-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .graph-card {
+        padding: 10px;
+    }
+
+    .controls {
+        width: 100%;
+        max-width: 270px;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<!-- =========================================================
+     HEADER
+     ========================================================= -->
+
+<header>
+
+```
+<h1>
+    🤖 ESP32 Robot Dashboard
+</h1>
+
+<div class="connection">
+
+    <div
+        id="mainDot"
+        class="dot">
+    </div>
+
+    <span id="mainConnection">
+        Offline
+    </span>
+
+</div>
+```
+
+</header>
+
+<div class="container">
+
+<!-- =========================================================
+     MAIN CONTROL GRID
+     ========================================================= -->
+
+<div class="grid">
+
+<!-- =========================================================
+     CAMERA
+     ========================================================= -->
+
+<div class="card">
+
+```
+<h2>📷 ESP32-CAM</h2>
+
+<div class="camera">
+
+    <img
+        id="cameraStream"
+        src="http://10.78.24.60:81/stream"
+        alt="ESP32 Camera">
+
+</div>
+
+
+<div class="status">
+
+    Camera:
+
+    <strong
+        id="cameraOnline"
+        class="offline">
+
+        Checking...
+
+    </strong>
+
+</div>
+
+
+<!-- SERVO -->
+
+<h2>🎥 Camera Servo</h2>
+
+<div class="servo-buttons">
+
+    <button
+        onclick="servoLeft()">
+
+        ⬅ Left
+
+    </button>
+
+
+    <button
+        onclick="servoCenter()">
+
+        ● Center
+
+    </button>
+
+
+    <button
+        onclick="servoRight()">
+
+        Right ➡
+
+    </button>
+
+</div>
+
+
+<input
+    id="servoSlider"
+    class="servo-slider"
+    type="range"
+    min="20"
+    max="160"
+    value="90">
+
+<div style="text-align:center;margin-top:8px;">
+
+    Servo:
+    <strong>
+        <span id="servoValue">90</span>°
+    </strong>
+
+</div>
+```
+
+</div>
+
+<!-- =========================================================
+     MOTOR CONTROL
+     ========================================================= -->
+
+<div class="card">
+
+```
+<h2>🎮 Robot Movement</h2>
+
+<p style="color:#aaa;text-align:center;">
+
+    Hold a button to move.<br>
+    Release the button to stop.
+
+</p>
+
+
+<div class="controls">
+
+
+    <div></div>
+
+
+    <!-- FORWARD -->
+
+    <button
+        id="forwardButton"
+        class="move-button">
+
+        ⬆
+
+    </button>
+
+
+    <div></div>
+
+
+    <!-- LEFT -->
+
+    <button
+        id="leftButton"
+        class="move-button">
+
+        ⬅
+
+    </button>
+
+
+    <!-- STOP -->
+
+    <button
+        id="stopButton"
+        class="move-button stop-button">
+
+        STOP
+
+    </button>
+
+
+    <!-- RIGHT -->
+
+    <button
+        id="rightButton"
+        class="move-button">
+
+        ➡
+
+    </button>
+
+
+    <div></div>
+
+
+    <!-- BACKWARD -->
+
+    <button
+        id="backwardButton"
+        class="move-button">
+
+        ⬇
+
+    </button>
+
+
+    <div></div>
+
+</div>
+
+
+<!-- SPEED -->
+
+<div class="speed-box">
+
+    <label>
+        Motor Speed
+    </label>
+
+    <input
+        id="speedSlider"
+        type="range"
+        min="0"
+        max="255"
+        value="180">
+
+    <div class="speed-value">
+
+        <span id="speedValue">
+            180
+        </span>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+<!-- =========================================================
+     SENSOR VALUES
+     ========================================================= -->
+
+<div class="card">
+
+```
+<h2>📊 Live Sensor Data</h2>
+
+<div class="sensor-grid">
+
+
+    <div class="sensor">
+
+        <div class="sensor-name">
+            Ultrasonic Distance
+        </div>
+
+        <div class="sensor-value">
+
+            <span id="distance">
+                --
+            </span>
+
+            cm
+
+        </div>
+
+    </div>
+
+
+    <div class="sensor">
+
+        <div class="sensor-name">
+            Temperature
+        </div>
+
+        <div class="sensor-value">
+
+            <span id="temperature">
+                --
+            </span>
+
+            °C
+
+        </div>
+
+    </div>
+
+
+    <div class="sensor">
+
+        <div class="sensor-name">
+            Humidity
+        </div>
+
+        <div class="sensor-value">
+
+            <span id="humidity">
+                --
+            </span>
+
+            %
+
+        </div>
+
+    </div>
+
+
+    <div class="sensor">
+
+        <div class="sensor-name">
+            MQ Sensor
+        </div>
+
+        <div class="sensor-value">
+
+            <span id="mq">
+                --
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="sensor">
+
+        <div class="sensor-name">
+            Water Sensor
+        </div>
+
+        <div class="sensor-value">
+
+            <span id="water">
+                --
+            </span>
+
+        </div>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+<!-- =========================================================
+     MOTOR STATUS
+     ========================================================= -->
+
+<div class="card">
+
+```
+<h2>📡 Motor ESP32</h2>
+
+
+<div class="status">
+
+    Status:
+
+    <strong
+        id="motorOnline"
+        class="offline">
+
+        Checking...
+
+    </strong>
+
+</div>
+
+
+<div class="info">
+
+    Device:
+    <span id="motorDevice">--</span>
+
+    <br>
+
+    IP:
+    <span id="motorIP">--</span>
+
+    <br>
+
+    Gateway:
+    <span id="motorGateway">--</span>
+
+    <br>
+
+    WiFi:
+    <span id="motorSSID">--</span>
+
+    <br>
+
+    RSSI:
+    <span id="motorRSSI">--</span>
+    dBm
+
+    <br>
+
+    Channel:
+    <span id="motorChannel">--</span>
+
+    <br>
+
+    Uptime:
+    <span id="motorUptime">--</span>
+    sec
+
+    <br>
+
+    Motor Speed:
+    <span id="motorSpeed">--</span>
+
+</div>
+```
+
+</div>
+
+<!-- =========================================================
+     CAMERA STATUS
+     ========================================================= -->
+
+<div class="card">
+
+```
+<h2>📷 Camera ESP32 Status</h2>
+
+
+<div class="info">
+
+    Device:
+    <span id="cameraDevice">--</span>
+
+    <br>
+
+    IP:
+    <span id="cameraIP">--</span>
+
+    <br>
+
+    Gateway:
+    <span id="cameraGateway">--</span>
+
+    <br>
+
+    WiFi:
+    <span id="cameraSSID">--</span>
+
+    <br>
+
+    RSSI:
+    <span id="cameraRSSI">--</span>
+    dBm
+
+    <br>
+
+    Servo:
+    <span id="cameraServo">--</span>
+    °
+
+</div>
+```
+
+</div>
+
+</div>
+
+<!-- =========================================================
+     GRAPHS
+     ========================================================= -->
+
+<div class="graph-grid">
+
+<!-- DISTANCE -->
+
+<div class="graph-card">
+
+```
+<h2>
+    📏 Ultrasonic Distance
+</h2>
+
+<div class="chart-container">
+
+    <canvas id="distanceChart"></canvas>
+
+</div>
+```
+
+</div>
+
+<!-- TEMPERATURE -->
+
+<div class="graph-card">
+
+```
+<h2>
+    🌡️ Temperature
+</h2>
+
+<div class="chart-container">
+
+    <canvas id="temperatureChart"></canvas>
+
+</div>
+```
+
+</div>
+
+<!-- HUMIDITY -->
+
+<div class="graph-card">
+
+```
+<h2>
+    💧 Humidity
+</h2>
+
+<div class="chart-container">
+
+    <canvas id="humidityChart"></canvas>
+
+</div>
+```
+
+</div>
+
+<!-- MQ -->
+
+<div class="graph-card">
+
+```
+<h2>
+    🧪 MQ Sensor
+</h2>
+
+<div class="chart-container">
+
+    <canvas id="mqChart"></canvas>
+
+</div>
+```
+
+</div>
+
+<!-- WATER -->
+
+<div class="graph-card">
+
+```
+<h2>
+    💦 Water Sensor
+</h2>
+
+<div class="chart-container">
+
+    <canvas id="waterChart"></canvas>
+
+</div>
+```
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+
+// ============================================================
+// ESP32 IP ADDRESSES
+// ============================================================
+
+const MOTOR_ESP =
+    "http://10.78.24.50";
+
+const CAMERA_ESP =
+    "http://10.78.24.60";
+
+
+// ============================================================
+// GRAPH SETTINGS
+// ============================================================
+
+const MAX_POINTS = 60;
+
+let labels = [];
+
+
+// ============================================================
+// CREATE CHART
+// ============================================================
+
+function createChart(canvasID, label) {
+
+    return new Chart(
+
+        document.getElementById(canvasID),
+
+        {
+
+            type: "line",
+
+            data: {
+
+                labels: labels,
+
+                datasets: [
+
+                    {
+
+                        label: label,
+
+                        data: [],
+
+                        borderWidth: 2,
+
+                        tension: 0.25,
+
+                        pointRadius: 2,
+
+                        fill: false
+
+                    }
+
+                ]
+
+            },
+
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                animation: false,
+
+
+                interaction: {
+
+                    intersect: false,
+
+                    mode: "index"
+
+                },
+
+
+                scales: {
+
+                    x: {
+
+                        title: {
+
+                            display: true,
+
+                            text: "Time"
+
+                        }
+
+                    },
+
+
+                    y: {
+
+                        beginAtZero: false,
+
+                        title: {
+
+                            display: true,
+
+                            text: label
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    );
+
+}
+
+
+// ============================================================
+// CREATE CHARTS
+// ============================================================
+
+const distanceChart =
+    createChart(
+        "distanceChart",
+        "Distance (cm)"
+    );
+
+
+const temperatureChart =
+    createChart(
+        "temperatureChart",
+        "Temperature (°C)"
+    );
+
+
+const humidityChart =
+    createChart(
+        "humidityChart",
+        "Humidity (%)"
+    );
+
+
+const mqChart =
+    createChart(
+        "mqChart",
+        "MQ Value"
+    );
+
+
+const waterChart =
+    createChart(
+        "waterChart",
+        "Water Value"
+    );
+
+
+// ============================================================
+// ADD GRAPH DATA
+// ============================================================
+
+function addData(chart, value) {
+
+    chart.data.datasets[0]
+        .data
+        .push(value);
+
+}
+
+
+// ============================================================
+// LIMIT GRAPH DATA
+// ============================================================
+
+function limitGraphData() {
+
+    while (
+        labels.length > MAX_POINTS
+    ) {
+
+        labels.shift();
+
+    }
+
+
+    const charts = [
+
+        distanceChart,
+
+        temperatureChart,
+
+        humidityChart,
+
+        mqChart,
+
+        waterChart
+
+    ];
+
+
+    charts.forEach(chart => {
+
+        while (
+            chart.data.datasets[0]
+                .data.length > MAX_POINTS
+        ) {
+
+            chart.data.datasets[0]
+                .data.shift();
+
+        }
+
+    });
+
+}
+
+
+// ============================================================
+// UPDATE GRAPHS
+// ============================================================
+
+function updateCharts() {
+
+    distanceChart.update("none");
+
+    temperatureChart.update("none");
+
+    humidityChart.update("none");
+
+    mqChart.update("none");
+
+    waterChart.update("none");
+
+}
+
+
+// ============================================================
+// MOTOR CONTROL
+// ============================================================
+
+let currentCommand = "S";
+
+
+// ------------------------------------------------------------
+// SEND MOTOR COMMAND
+// ------------------------------------------------------------
+
+function sendMotorCommand(command) {
+
+    currentCommand = command;
+
+    fetch(
+        MOTOR_ESP + "/" + command,
+        {
+            cache: "no-store"
+        }
+    )
+    .catch(() => {});
+
+}
+
+
+// ------------------------------------------------------------
+// START MOVEMENT
+// ------------------------------------------------------------
+
+function startMovement(command) {
+
+    sendMotorCommand(command);
+
+}
+
+
+// ------------------------------------------------------------
+// STOP MOVEMENT
+// ------------------------------------------------------------
+
+function stopMovement() {
+
+    sendMotorCommand("S");
+
+}
+
+
+// ============================================================
+// BUTTON HOLD CONTROL
+// ============================================================
+
+function setupHoldButton(
+    buttonID,
+    command
+) {
+
+    const button =
+        document.getElementById(buttonID);
+
+
+    // --------------------------------------------------------
+    // MOUSE
+    // --------------------------------------------------------
+
+    button.addEventListener(
+        "mousedown",
+        function(event) {
+
+            event.preventDefault();
+
+            startMovement(command);
+
+        }
+    );
+
+
+    button.addEventListener(
+        "mouseup",
+        function(event) {
+
+            event.preventDefault();
+
+            stopMovement();
+
+        }
+    );
+
+
+    button.addEventListener(
+        "mouseleave",
+        function() {
+
+            stopMovement();
+
+        }
+    );
+
+
+    // --------------------------------------------------------
+    // TOUCH
+    // --------------------------------------------------------
+
+    button.addEventListener(
+        "touchstart",
+        function(event) {
+
+            event.preventDefault();
+
+            startMovement(command);
+
+        },
+        {
+            passive: false
+        }
+    );
+
+
+    button.addEventListener(
+        "touchend",
+        function(event) {
+
+            event.preventDefault();
+
+            stopMovement();
+
+        },
+        {
+            passive: false
+        }
+    );
+
+
+    button.addEventListener(
+        "touchcancel",
+        function(event) {
+
+            event.preventDefault();
+
+            stopMovement();
+
+        },
+        {
+            passive: false
+        }
+    );
+
+}
+
+
+// ============================================================
+// SETUP MOVEMENT BUTTONS
+// ============================================================
+
+setupHoldButton(
+    "forwardButton",
+    "F"
+);
+
+
+setupHoldButton(
+    "backwardButton",
+    "B"
+);
+
+
+setupHoldButton(
+    "leftButton",
+    "L"
+);
+
+
+setupHoldButton(
+    "rightButton",
+    "R"
+);
+
+
+// ============================================================
+// STOP BUTTON
+// ============================================================
+
+document
+    .getElementById("stopButton")
+    .addEventListener(
+        "click",
+        function() {
+
+            stopMovement();
+
+        }
+    );
+
+
+// ============================================================
+// SPEED
+// ============================================================
+
+const speedSlider =
+    document.getElementById(
+        "speedSlider"
+    );
+
+
+speedSlider.addEventListener(
+    "input",
+    function() {
+
+        const speed =
+            this.value;
+
+
+        document.getElementById(
+            "speedValue"
+        ).textContent =
+            speed;
+
+
+        fetch(
+            MOTOR_ESP +
+            "/speed?v=" +
+            speed
+        )
+        .catch(() => {});
+
+    }
+);
+
+
+// ============================================================
+// SERVO
+// ============================================================
+
+const servoSlider =
+    document.getElementById(
+        "servoSlider"
+    );
+
+
+servoSlider.addEventListener(
+    "input",
+    function() {
+
+        const angle =
+            this.value;
+
+
+        document.getElementById(
+            "servoValue"
+        ).textContent =
+            angle;
+
+
+        fetch(
+            CAMERA_ESP +
+            "/servo?angle=" +
+            angle
+        )
+        .catch(() => {});
+
+    }
+);
+
+
+// ============================================================
+// SERVO PRESET
+// ============================================================
+
+function servoLeft() {
+
+    servoSlider.value = 20;
+
+    document.getElementById(
+        "servoValue"
+    ).textContent = 20;
+
+
+    fetch(
+        CAMERA_ESP + "/left"
+    )
+    .catch(() => {});
+
+}
+
+
+function servoCenter() {
+
+    servoSlider.value = 90;
+
+    document.getElementById(
+        "servoValue"
+    ).textContent = 90;
+
+
+    fetch(
+        CAMERA_ESP + "/center"
+    )
+    .catch(() => {});
+
+}
+
+
+function servoRight() {
+
+    servoSlider.value = 160;
+
+    document.getElementById(
+        "servoValue"
+    ).textContent = 160;
+
+
+    fetch(
+        CAMERA_ESP + "/right"
+    )
+    .catch(() => {});
+
+}
+
+
+// ============================================================
+// SENSOR DATA
+// ============================================================
+
+async function getSensorData() {
+
+    try {
+
+        const response =
+            await fetch(
+                MOTOR_ESP + "/data",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "ESP32 error"
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        // ----------------------------------------------------
+        // CURRENT VALUES
+        // ----------------------------------------------------
+
+        document.getElementById(
+            "distance"
+        ).textContent =
+            formatValue(
+                data.distance
+            );
+
+
+        document.getElementById(
+            "temperature"
+        ).textContent =
+            formatValue(
+                data.temperature
+            );
+
+
+        document.getElementById(
+            "humidity"
+        ).textContent =
+            formatValue(
+                data.humidity
+            );
+
+
+        document.getElementById(
+            "mq"
+        ).textContent =
+            formatValue(
+                data.mq
+            );
+
+
+        document.getElementById(
+            "water"
+        ).textContent =
+            formatValue(
+                data.water
+            );
+
+
+        // ----------------------------------------------------
+        // GRAPH
+        // ----------------------------------------------------
+
+        const now =
+            new Date()
+            .toLocaleTimeString();
+
+
+        labels.push(now);
+
+
+        addData(
+            distanceChart,
+            Number(data.distance)
+        );
+
+
+        addData(
+            temperatureChart,
+            Number(data.temperature)
+        );
+
+
+        addData(
+            humidityChart,
+            Number(data.humidity)
+        );
+
+
+        addData(
+            mqChart,
+            Number(data.mq)
+        );
+
+
+        addData(
+            waterChart,
+            Number(data.water)
+        );
+
+
+        limitGraphData();
+
+        updateCharts();
+
+
+        // ----------------------------------------------------
+        // CONNECTION
+        // ----------------------------------------------------
+
+        setMotorOnline(true);
+
+    }
+
+
+    catch(error) {
+
+        console.log(
+            "Sensor error:",
+            error
+        );
+
+
+        setMotorOnline(false);
+
+    }
+
+}
+
+
+// ============================================================
+// MOTOR STATUS
+// ============================================================
+
+async function getMotorStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                MOTOR_ESP + "/status",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Status error"
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "motorDevice"
+        ).textContent =
+            data.device || "--";
+
+
+        document.getElementById(
+            "motorIP"
+        ).textContent =
+            data.ip || "--";
+
+
+        document.getElementById(
+            "motorGateway"
+        ).textContent =
+            data.gateway || "--";
+
+
+        document.getElementById(
+            "motorSSID"
+        ).textContent =
+            data.ssid || "--";
+
+
+        document.getElementById(
+            "motorRSSI"
+        ).textContent =
+            data.rssi || "--";
+
+
+        document.getElementById(
+            "motorChannel"
+        ).textContent =
+            data.channel || "--";
+
+
+        document.getElementById(
+            "motorUptime"
+        ).textContent =
+            data.uptime || "--";
+
+
+        document.getElementById(
+            "motorSpeed"
+        ).textContent =
+            data.motorSpeed || "--";
+
+
+        setMotorOnline(true);
+
+    }
+
+
+    catch(error) {
+
+        setMotorOnline(false);
+
+    }
+
+}
+
+
+// ============================================================
+// CAMERA STATUS
+// ============================================================
+
+async function getCameraStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                CAMERA_ESP + "/status",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Camera error"
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "cameraDevice"
+        ).textContent =
+            data.device || "--";
+
+
+        document.getElementById(
+            "cameraIP"
+        ).textContent =
+            data.ip || "--";
+
+
+        document.getElementById(
+            "cameraGateway"
+        ).textContent =
+            data.gateway || "--";
+
+
+        document.getElementById(
+            "cameraSSID"
+        ).textContent =
+            data.ssid || "--";
+
+
+        document.getElementById(
+            "cameraRSSI"
+        ).textContent =
+            data.rssi || "--";
+
+
+        document.getElementById(
+            "cameraServo"
+        ).textContent =
+            data.servoAngle || "--";
+
+
+        document.getElementById(
+            "cameraOnline"
+        ).textContent =
+            "ONLINE";
+
+
+        document.getElementById(
+            "cameraOnline"
+        ).className =
+            "online";
+
+
+    }
+
+
+    catch(error) {
+
+        document.getElementById(
+            "cameraOnline"
+        ).textContent =
+            "OFFLINE";
+
+
+        document.getElementById(
+            "cameraOnline"
+        ).className =
+            "offline";
+
+    }
+
+}
+
+
+// ============================================================
+// MOTOR ONLINE STATUS
+// ============================================================
+
+function setMotorOnline(online) {
+
+    const element =
+        document.getElementById(
+            "motorOnline"
+        );
+
+
+    if (online) {
+
+        element.textContent =
+            "ONLINE";
+
+        element.className =
+            "online";
+
+    }
+
+    else {
+
+        element.textContent =
+            "OFFLINE";
+
+        element.className =
+            "offline";
+
+    }
+
+
+    updateMainConnection();
+
+}
+
+
+// ============================================================
+// MAIN CONNECTION
+// ============================================================
+
+function updateMainConnection() {
+
+    const motor =
+        document.getElementById(
+            "motorOnline"
+        ).textContent ===
+        "ONLINE";
+
+
+    const camera =
+        document.getElementById(
+            "cameraOnline"
+        ).textContent ===
+        "ONLINE";
+
+
+    const dot =
+        document.getElementById(
+            "mainDot"
+        );
+
+
+    const text =
+        document.getElementById(
+            "mainConnection"
+        );
+
+
+    if (motor || camera) {
+
+        dot.classList.add(
+            "online"
+        );
+
+        text.textContent =
+            "Connected";
+
+    }
+
+    else {
+
+        dot.classList.remove(
+            "online"
+        );
+
+        text.textContent =
+            "Offline";
+
+    }
+
+}
+
+
+// ============================================================
+// NUMBER FORMAT
+// ============================================================
+
+function formatValue(value) {
+
+    if (
+        value === undefined ||
+        value === null ||
+        isNaN(value)
+    ) {
+
+        return "--";
+
+    }
+
+    return Number(value)
+        .toFixed(1);
+
+}
+
+
+// ============================================================
+// KEYBOARD CONTROL
+// ============================================================
+
+let keyboardCommand = null;
+
+
+document.addEventListener(
+    "keydown",
+    function(event) {
+
+        if (event.repeat)
+            return;
+
+
+        let command = null;
+
+
+        switch (
+            event.key.toLowerCase()
+        ) {
+
+            case "w":
+            case "arrowup":
+
+                command = "F";
+
+                break;
+
+
+            case "s":
+            case "arrowdown":
+
+                command = "B";
+
+                break;
+
+
+            case "a":
+            case "arrowleft":
+
+                command = "L";
+
+                break;
+
+
+            case "d":
+            case "arrowright":
+
+                command = "R";
+
+                break;
+
+
+            case " ":
+
+                stopMovement();
+
+                return;
+
+        }
+
+
+        if (command) {
+
+            keyboardCommand =
+                command;
+
+            startMovement(command);
+
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "keyup",
+    function(event) {
+
+        switch (
+            event.key.toLowerCase()
+        ) {
+
+            case "w":
+            case "s":
+            case "a":
+            case "d":
+            case "arrowup":
+            case "arrowdown":
+            case "arrowleft":
+            case "arrowright":
+
+                if (keyboardCommand) {
+
+                    stopMovement();
+
+                    keyboardCommand =
+                        null;
+
+                }
+
+                break;
+
+        }
+
+    }
+);
+
+
+// ============================================================
+// SAFETY STOP
+// ============================================================
+
+// If browser tab loses focus,
+// immediately stop the robot.
+
+window.addEventListener(
+    "blur",
+    function() {
+
+        stopMovement();
+
+    }
+);
+
+
+// If page is hidden,
+// stop robot.
+
+document.addEventListener(
+    "visibilitychange",
+    function() {
+
+        if (
+            document.hidden
+        ) {
+
+            stopMovement();
+
+        }
+
+    }
+);
+
+
+// ============================================================
+// START
+// ============================================================
+
+getSensorData();
+
+getMotorStatus();
+
+getCameraStatus();
+
+
+// Sensor update every 1 second
+
+setInterval(
+    getSensorData,
+    1000
+);
+
+
+// ESP32 status every 2 seconds
+
+setInterval(
+    getMotorStatus,
+    2000
+);
+
+
+setInterval(
+    getCameraStatus,
+    2000
+);
+
+</script>
+
+</body>
+
+</html>
