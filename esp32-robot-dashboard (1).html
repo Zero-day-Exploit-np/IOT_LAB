@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Robot Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+
+  /* ============================================================
+     TOKENS — field-console palette: dark instrument panel,
+     amber telemetry accent, phosphor-green for "alive" states.
+     ============================================================ */
+  :root {
+    --bg: #0b0d0e;
+    --bg-raised: #131618;
+    --panel: #15181a;
+    --panel-2: #1a1e20;
+    --line: #262b2e;
+    --line-soft: #1e2224;
+
+    --text: #e7e4d9;
+    --text-dim: #9a9d97;
+    --text-faint: #5f6461;
+
+    --amber: #ffb454;
+    --amber-dim: #7a5a2e;
+    --green: #6fdc8c;
+    --green-dim: #234a30;
+    --red: #ff6b6b;
+    --red-dim: #4a2323;
+    --cyan: #5fd0e0;
+
+    --radius: 3px;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --display: 'Space Grotesk', var(--mono);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--mono);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #14181a 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--amber-dim); color: var(--text); }
+
+  /* ============================================================
+     HEADER
+     ============================================================ */
+  header {
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--line);
+    padding: 16px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+
+  .brand-mark {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: 0.01em;
+    color: var(--text);
+  }
+
+  .brand-mark span { color: var(--amber); }
+
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 0.06em;
+  }
+
+  .connection {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 6px 14px 6px 10px;
+    background: var(--panel);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 0 3px var(--red-dim);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+
+  .dot.online {
+    background: var(--green);
+    box-shadow: 0 0 0 3px var(--green-dim);
+  }
+
+  /* ============================================================
+     LAYOUT
+     ============================================================ */
+  .container {
+    max-width: 1440px;
+    margin: auto;
+    padding: 24px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .grid-secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+  }
+
+  .grid-status {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+  }
+
+  .card-title .idx {
+    color: var(--amber);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .pill {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 4px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+  }
+
+  .pill.online { color: var(--green); border-color: var(--green-dim); background: rgba(111,220,140,0.06); }
+  .pill.offline { color: var(--red); border-color: var(--red-dim); background: rgba(255,107,107,0.06); }
+
+  /* ============================================================
+     CAMERA
+     ============================================================ */
+  .camera {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--line-soft);
+    position: relative;
+  }
+
+  .camera img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+  .camera::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+  }
+
+  .camera-frame-tag {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    font-size: 10px;
+    color: var(--amber);
+    background: rgba(0,0,0,0.55);
+    padding: 3px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+  }
+
+  /* SERVO */
+  .servo-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .servo-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .servo-readout {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--amber);
+    min-width: 46px;
+    text-align: right;
+  }
+
+  /* ============================================================
+     BUTTONS / SLIDERS
+     ============================================================ */
+  button {
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 11px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    transition: background 0.12s, border-color 0.12s;
+  }
+
+  button:hover { background: #21262a; border-color: #353b3e; }
+  button:active { transform: scale(0.97); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--line);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--amber);
+    cursor: pointer;
+    border: 2px solid #0b0d0e;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--amber);
+    cursor: pointer;
+    border: 2px solid #0b0d0e;
+  }
+
+  /* ============================================================
+     MOVEMENT CONTROL — compass layout
+     ============================================================ */
+  .dpad-hint {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin: 0 0 16px;
+    line-height: 1.6;
+  }
+
+  .dpad-hint kbd {
+    font-family: var(--mono);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 10.5px;
+    color: var(--text-dim);
+  }
+
+  .controls {
+    width: 216px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .move-button {
+    min-height: 58px;
+    font-size: 20px;
+    color: var(--amber);
+  }
+
+  .stop-button {
+    background: var(--red-dim);
+    border-color: #6b3232;
+    color: var(--red);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .stop-button:hover { background: #5a2b2b; }
+
+  .speed-box { margin-top: 26px; }
+
+  .speed-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+  }
+
+  .speed-value {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--amber);
+  }
+
+  /* ============================================================
+     SENSOR READOUTS
+     ============================================================ */
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+
+  .sensor {
+    background: var(--panel-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 14px 10px;
+    text-align: center;
+  }
+
+  .sensor-name {
+    color: var(--text-faint);
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    margin-bottom: 10px;
+  }
+
+  .sensor-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .sensor-unit {
+    font-size: 11px;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+
+  @media (max-width: 900px) {
+    .sensor-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ============================================================
+     NETWORK STATUS
+     ============================================================ */
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+
+  .info-table tr { border-bottom: 1px solid var(--line-soft); }
+  .info-table tr:last-child { border-bottom: none; }
+
+  .info-table td {
+    padding: 8px 0;
+    color: var(--text-faint);
+  }
+
+  .info-table td:last-child {
+    text-align: right;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ============================================================
+     CHARTS
+     ============================================================ */
+  .graph-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 18px;
+    margin-top: 18px;
+  }
+
+  .chart-container { position: relative; height: 260px; }
+
+  .section-label {
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-faint);
+    letter-spacing: 0.05em;
+    margin: 32px 0 -4px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  /* ============================================================
+     MOBILE
+     ============================================================ */
+  @media (max-width: 900px) {
+    .grid, .grid-secondary, .grid-status { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 13px 16px; }
+    .brand-mark { font-size: 16px; }
+    .container { padding: 14px; }
+    .card { padding: 15px; }
+    .controls { width: 100%; max-width: 240px; }
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="brand-mark">RVR<span>-01</span></span>
+    <span class="brand-sub">FIELD TELEMETRY CONSOLE</span>
+  </div>
+  <div class="connection">
+    <div id="mainDot" class="dot"></div>
+    <span id="mainConnection">Offline</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="grid">
+
+    <!-- CAMERA + SERVO -->
+    <div class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="idx">01</span> Optical feed</h2>
+        <span id="cameraOnline" class="pill offline">checking</span>
+      </div>
+
+      <div class="camera">
+        <img id="cameraStream" src="http://10.78.24.60:81/stream" alt="ESP32 Camera">
+        <span class="camera-frame-tag">LIVE · CAM-ESP</span>
+      </div>
+
+      <div class="card-head" style="margin-top:22px;">
+        <h2 class="card-title"><span class="idx">02</span> Camera servo</h2>
+      </div>
+
+      <div class="servo-buttons">
+        <button onclick="servoLeft()">◄ Left</button>
+        <button onclick="servoCenter()">● Center</button>
+        <button onclick="servoRight()">Right ►</button>
+      </div>
+
+      <div class="servo-slider-row">
+        <input id="servoSlider" type="range" min="20" max="160" value="90">
+        <span class="servo-readout"><span id="servoValue">90</span>°</span>
+      </div>
+    </div>
+
+    <!-- MOVEMENT -->
+    <div class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="idx">03</span> Movement control</h2>
+      </div>
+
+      <p class="dpad-hint">
+        Hold a button, or use <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> /
+        arrow keys. Release to stop. Losing focus stops the robot automatically.
+      </p>
+
+      <div class="controls">
+        <div></div>
+        <button id="forwardButton" class="move-button">▲</button>
+        <div></div>
+
+        <button id="leftButton" class="move-button">◄</button>
+        <button id="stopButton" class="move-button stop-button">STOP</button>
+        <button id="rightButton" class="move-button">►</button>
+
+        <div></div>
+        <button id="backwardButton" class="move-button">▼</button>
+        <div></div>
+      </div>
+
+      <div class="speed-box">
+        <div class="speed-label-row">
+          <span>MOTOR SPEED</span>
+          <span class="speed-value"><span id="speedValue">180</span> / 255</span>
+        </div>
+        <input id="speedSlider" type="range" min="0" max="255" value="180">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SENSORS -->
+  <div class="card" style="margin-top:18px;">
+    <div class="card-head">
+      <h2 class="card-title"><span class="idx">04</span> Live sensor data</h2>
+    </div>
+
+    <div class="sensor-grid">
+      <div class="sensor">
+        <div class="sensor-name">DISTANCE</div>
+        <div class="sensor-value"><span id="distance">--</span> <span class="sensor-unit">cm</span></div>
+      </div>
+      <div class="sensor">
+        <div class="sensor-name">TEMPERATURE</div>
+        <div class="sensor-value"><span id="temperature">--</span> <span class="sensor-unit">°C</span></div>
+      </div>
+      <div class="sensor">
+        <div class="sensor-name">HUMIDITY</div>
+        <div class="sensor-value"><span id="humidity">--</span> <span class="sensor-unit">%</span></div>
+      </div>
+      <div class="sensor">
+        <div class="sensor-name">MQ SENSOR</div>
+        <div class="sensor-value"><span id="mq">--</span></div>
+      </div>
+      <div class="sensor">
+        <div class="sensor-name">WATER</div>
+        <div class="sensor-value"><span id="water">--</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NODE STATUS -->
+  <div class="grid-status">
+    <div class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="idx">05</span> Motor node</h2>
+        <span id="motorOnline" class="pill offline">checking</span>
+      </div>
+      <table class="info-table">
+        <tr><td>Device</td><td id="motorDevice">--</td></tr>
+        <tr><td>IP address</td><td id="motorIP">--</td></tr>
+        <tr><td>Gateway</td><td id="motorGateway">--</td></tr>
+        <tr><td>Wi-Fi SSID</td><td id="motorSSID">--</td></tr>
+        <tr><td>RSSI</td><td><span id="motorRSSI">--</span> dBm</td></tr>
+        <tr><td>Channel</td><td id="motorChannel">--</td></tr>
+        <tr><td>Uptime</td><td><span id="motorUptime">--</span> s</td></tr>
+        <tr><td>Motor speed</td><td id="motorSpeed">--</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="idx">06</span> Camera node</h2>
+      </div>
+      <table class="info-table">
+        <tr><td>Device</td><td id="cameraDevice">--</td></tr>
+        <tr><td>IP address</td><td id="cameraIP">--</td></tr>
+        <tr><td>Gateway</td><td id="cameraGateway">--</td></tr>
+        <tr><td>Wi-Fi SSID</td><td id="cameraSSID">--</td></tr>
+        <tr><td>RSSI</td><td><span id="cameraRSSI">--</span> dBm</td></tr>
+        <tr><td>Servo angle</td><td><span id="cameraServo">--</span>°</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-label">TELEMETRY HISTORY — LAST 60 SAMPLES</div>
+
+  <div class="graph-grid">
+    <div class="card">
+      <h2 class="card-title" style="margin-bottom:12px;">Ultrasonic distance</h2>
+      <div class="chart-container"><canvas id="distanceChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2 class="card-title" style="margin-bottom:12px;">Temperature</h2>
+      <div class="chart-container"><canvas id="temperatureChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2 class="card-title" style="margin-bottom:12px;">Humidity</h2>
+      <div class="chart-container"><canvas id="humidityChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2 class="card-title" style="margin-bottom:12px;">MQ sensor</h2>
+      <div class="chart-container"><canvas id="mqChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2 class="card-title" style="margin-bottom:12px;">Water sensor</h2>
+      <div class="chart-container"><canvas id="waterChart"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+
+// ============================================================
+// ESP32 IP ADDRESSES
+// ============================================================
+const MOTOR_ESP = "http://10.78.24.50";
+const CAMERA_ESP = "http://10.78.24.60";
+
+// ============================================================
+// GRAPH SETTINGS
+// ============================================================
+const MAX_POINTS = 60;
+let labels = [];
+
+const chartTextColor = "#9a9d97";
+const chartGridColor = "#1e2224";
+
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = chartTextColor;
+
+function createChart(canvasID, label, color) {
+  return new Chart(document.getElementById(canvasID), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: label,
+        data: [],
+        borderWidth: 2,
+        borderColor: color,
+        backgroundColor: color + "22",
+        tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { intersect: false, mode: "index" },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { color: chartGridColor },
+          ticks: { maxTicksLimit: 6, color: chartTextColor }
+        },
+        y: {
+          beginAtZero: false,
+          grid: { color: chartGridColor },
+          ticks: { color: chartTextColor }
+        }
+      }
+    }
+  });
+}
+
+// ============================================================
+// CREATE CHARTS
+// ============================================================
+const distanceChart = createChart("distanceChart", "Distance (cm)", "#ffb454");
+const temperatureChart = createChart("temperatureChart", "Temperature (°C)", "#ff6b6b");
+const humidityChart = createChart("humidityChart", "Humidity (%)", "#5fd0e0");
+const mqChart = createChart("mqChart", "MQ Value", "#6fdc8c");
+const waterChart = createChart("waterChart", "Water Value", "#c792ea");
+
+// ============================================================
+// ADD GRAPH DATA
+// ============================================================
+function addData(chart, value) {
+  chart.data.datasets[0].data.push(value);
+}
+
+// ============================================================
+// LIMIT GRAPH DATA
+// ============================================================
+function limitGraphData() {
+  while (labels.length > MAX_POINTS) { labels.shift(); }
+
+  const charts = [distanceChart, temperatureChart, humidityChart, mqChart, waterChart];
+  charts.forEach(chart => {
+    while (chart.data.datasets[0].data.length > MAX_POINTS) {
+      chart.data.datasets[0].data.shift();
+    }
+  });
+}
+
+// ============================================================
+// UPDATE GRAPHS
+// ============================================================
+function updateCharts() {
+  distanceChart.update("none");
+  temperatureChart.update("none");
+  humidityChart.update("none");
+  mqChart.update("none");
+  waterChart.update("none");
+}
+
+// ============================================================
+// MOTOR CONTROL
+// ============================================================
+let currentCommand = "S";
+
+function sendMotorCommand(command) {
+  currentCommand = command;
+  fetch(MOTOR_ESP + "/" + command, { cache: "no-store" }).catch(() => {});
+}
+
+function startMovement(command) { sendMotorCommand(command); }
+function stopMovement() { sendMotorCommand("S"); }
+
+// ============================================================
+// BUTTON HOLD CONTROL
+// ============================================================
+function setupHoldButton(buttonID, command) {
+  const button = document.getElementById(buttonID);
+
+  button.addEventListener("mousedown", function(event) { event.preventDefault(); startMovement(command); });
+  button.addEventListener("mouseup", function(event) { event.preventDefault(); stopMovement(); });
+  button.addEventListener("mouseleave", function() { stopMovement(); });
+
+  button.addEventListener("touchstart", function(event) { event.preventDefault(); startMovement(command); }, { passive: false });
+  button.addEventListener("touchend", function(event) { event.preventDefault(); stopMovement(); }, { passive: false });
+  button.addEventListener("touchcancel", function(event) { event.preventDefault(); stopMovement(); }, { passive: false });
+}
+
+setupHoldButton("forwardButton", "F");
+setupHoldButton("backwardButton", "B");
+setupHoldButton("leftButton", "L");
+setupHoldButton("rightButton", "R");
+
+// ============================================================
+// STOP BUTTON
+// ============================================================
+document.getElementById("stopButton").addEventListener("click", function() { stopMovement(); });
+
+// ============================================================
+// SPEED
+// ============================================================
+const speedSlider = document.getElementById("speedSlider");
+speedSlider.addEventListener("input", function() {
+  const speed = this.value;
+  document.getElementById("speedValue").textContent = speed;
+  fetch(MOTOR_ESP + "/speed?v=" + speed).catch(() => {});
+});
+
+// ============================================================
+// SERVO
+// ============================================================
+const servoSlider = document.getElementById("servoSlider");
+servoSlider.addEventListener("input", function() {
+  const angle = this.value;
+  document.getElementById("servoValue").textContent = angle;
+  fetch(CAMERA_ESP + "/servo?angle=" + angle).catch(() => {});
+});
+
+function servoLeft() {
+  servoSlider.value = 20;
+  document.getElementById("servoValue").textContent = 20;
+  fetch(CAMERA_ESP + "/left").catch(() => {});
+}
+
+function servoCenter() {
+  servoSlider.value = 90;
+  document.getElementById("servoValue").textContent = 90;
+  fetch(CAMERA_ESP + "/center").catch(() => {});
+}
+
+function servoRight() {
+  servoSlider.value = 160;
+  document.getElementById("servoValue").textContent = 160;
+  fetch(CAMERA_ESP + "/right").catch(() => {});
+}
+
+// ============================================================
+// SENSOR DATA
+// ============================================================
+async function getSensorData() {
+  try {
+    const response = await fetch(MOTOR_ESP + "/data", { cache: "no-store" });
+    if (!response.ok) { throw new Error("ESP32 error"); }
+    const data = await response.json();
+
+    document.getElementById("distance").textContent = formatValue(data.distance);
+    document.getElementById("temperature").textContent = formatValue(data.temperature);
+    document.getElementById("humidity").textContent = formatValue(data.humidity);
+    document.getElementById("mq").textContent = formatValue(data.mq);
+    document.getElementById("water").textContent = formatValue(data.water);
+
+    const now = new Date().toLocaleTimeString();
+    labels.push(now);
+
+    addData(distanceChart, Number(data.distance));
+    addData(temperatureChart, Number(data.temperature));
+    addData(humidityChart, Number(data.humidity));
+    addData(mqChart, Number(data.mq));
+    addData(waterChart, Number(data.water));
+
+    limitGraphData();
+    updateCharts();
+
+    setMotorOnline(true);
+  }
+  catch (error) {
+    console.log("Sensor error:", error);
+    setMotorOnline(false);
+  }
+}
+
+// ============================================================
+// MOTOR STATUS
+// ============================================================
+async function getMotorStatus() {
+  try {
+    const response = await fetch(MOTOR_ESP + "/status", { cache: "no-store" });
+    if (!response.ok) { throw new Error("Status error"); }
+    const data = await response.json();
+
+    document.getElementById("motorDevice").textContent = data.device || "--";
+    document.getElementById("motorIP").textContent = data.ip || "--";
+    document.getElementById("motorGateway").textContent = data.gateway || "--";
+    document.getElementById("motorSSID").textContent = data.ssid || "--";
+    document.getElementById("motorRSSI").textContent = data.rssi || "--";
+    document.getElementById("motorChannel").textContent = data.channel || "--";
+    document.getElementById("motorUptime").textContent = data.uptime || "--";
+    document.getElementById("motorSpeed").textContent = data.motorSpeed || "--";
+
+    setMotorOnline(true);
+  }
+  catch (error) {
+    setMotorOnline(false);
+  }
+}
+
+// ============================================================
+// CAMERA STATUS
+// ============================================================
+async function getCameraStatus() {
+  try {
+    const response = await fetch(CAMERA_ESP + "/status", { cache: "no-store" });
+    if (!response.ok) { throw new Error("Camera error"); }
+    const data = await response.json();
+
+    document.getElementById("cameraDevice").textContent = data.device || "--";
+    document.getElementById("cameraIP").textContent = data.ip || "--";
+    document.getElementById("cameraGateway").textContent = data.gateway || "--";
+    document.getElementById("cameraSSID").textContent = data.ssid || "--";
+    document.getElementById("cameraRSSI").textContent = data.rssi || "--";
+    document.getElementById("cameraServo").textContent = data.servoAngle || "--";
+
+    const el = document.getElementById("cameraOnline");
+    el.textContent = "online";
+    el.className = "pill online";
+  }
+  catch (error) {
+    const el = document.getElementById("cameraOnline");
+    el.textContent = "offline";
+    el.className = "pill offline";
+  }
+}
+
+// ============================================================
+// MOTOR ONLINE STATUS
+// ============================================================
+function setMotorOnline(online) {
+  const element = document.getElementById("motorOnline");
+
+  if (online) {
+    element.textContent = "online";
+    element.className = "pill online";
+  } else {
+    element.textContent = "offline";
+    element.className = "pill offline";
+  }
+
+  updateMainConnection();
+}
+
+// ============================================================
+// MAIN CONNECTION
+// ============================================================
+function updateMainConnection() {
+  const motor = document.getElementById("motorOnline").textContent === "online";
+  const camera = document.getElementById("cameraOnline").textContent === "online";
+
+  const dot = document.getElementById("mainDot");
+  const text = document.getElementById("mainConnection");
+
+  if (motor || camera) {
+    dot.classList.add("online");
+    text.textContent = "Connected";
+  } else {
+    dot.classList.remove("online");
+    text.textContent = "Offline";
+  }
+}
+
+// ============================================================
+// NUMBER FORMAT
+// ============================================================
+function formatValue(value) {
+  if (value === undefined || value === null || isNaN(value)) { return "--"; }
+  return Number(value).toFixed(1);
+}
+
+// ============================================================
+// KEYBOARD CONTROL
+// ============================================================
+let keyboardCommand = null;
+
+document.addEventListener("keydown", function(event) {
+  if (event.repeat) return;
+
+  let command = null;
+
+  switch (event.key.toLowerCase()) {
+    case "w": case "arrowup": command = "F"; break;
+    case "s": case "arrowdown": command = "B"; break;
+    case "a": case "arrowleft": command = "L"; break;
+    case "d": case "arrowright": command = "R"; break;
+    case " ": stopMovement(); return;
+  }
+
+  if (command) {
+    keyboardCommand = command;
+    startMovement(command);
+  }
+});
+
+document.addEventListener("keyup", function(event) {
+  switch (event.key.toLowerCase()) {
+    case "w": case "s": case "a": case "d":
+    case "arrowup": case "arrowdown": case "arrowleft": case "arrowright":
+      if (keyboardCommand) {
+        stopMovement();
+        keyboardCommand = null;
+      }
+      break;
+  }
+});
+
+// ============================================================
+// SAFETY STOP
+// ============================================================
+window.addEventListener("blur", function() { stopMovement(); });
+
+document.addEventListener("visibilitychange", function() {
+  if (document.hidden) { stopMovement(); }
+});
+
+// ============================================================
+// START
+// ============================================================
+getSensorData();
+getMotorStatus();
+getCameraStatus();
+
+setInterval(getSensorData, 1000);
+setInterval(getMotorStatus, 2000);
+setInterval(getCameraStatus, 2000);
+
+</script>
+
+</body>
+</html>
