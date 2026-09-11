@@ -1,0 +1,84 @@
+Final pin table
+ESP32 #1 — Motor + Sensors
+
+Device	Pin
+L298N ENA	GPIO14
+L298N IN1	GPIO27
+L298N IN2	GPIO26
+L298N IN3	GPIO25
+L298N IN4	GPIO33
+L298N ENB	GPIO12
+DHT11 DATA	GPIO4
+HC-SR04 TRIG	GPIO16
+HC-SR04 ECHO	GPIO17 through divider
+Water AO	GPIO34
+MQ AO	GPIO35 through divider
+
+ESP32-CAM
+Device	Pin
+Servo signal	GPIO13
+Camera	Built-in camera connector
+
+Wi-Fi	sonu
+IP	172.17.40.60
+
+Motor ESP32 network
+SSID: sonu
+IP: 172.17.40.50
+
+                 Wi-Fi: sonu
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+    ESP32 #1                  ESP32-CAM
+  172.17.40.50               172.17.40.60
+          │                       │
+       L298N                    Camera
+       /    \                     +
+   Motor L  Motor R              Servo
+          │
+       Sensors
+   ┌────┬────┬────┐
+ DHT11 HC-SR04 MQ  Water
+
+
+
+Complete Motor ESP32 pin summary
+                    MOTOR ESP32
+                  ┌──────────────┐
+                  │              │
+ DHT11 DATA ──────┤ GPIO 4       │
+ HC-SR04 TRIG ────┤ GPIO 16      │
+ HC-SR04 ECHO ────┤ GPIO 17      │
+ Water AO ────────┤ GPIO 34      │
+ MQ AO ───────────┤ GPIO 35      │
+                  │              │
+ L298N ENA ───────┤ GPIO 14      │
+ L298N IN1 ───────┤ GPIO 27      │
+ L298N IN2 ───────┤ GPIO 26      │
+ L298N IN3 ───────┤ GPIO 25      │
+ L298N IN4 ───────┤ GPIO 33      │
+ L298N ENB ───────┤ GPIO 12      │
+                  │              │
+                  │ GND          │
+                  └──────┬───────┘
+                         │
+                    COMMON GND
+
+
+
+Most important: common ground
+
+L298N GND
+    │
+ESP32 GND
+    │
+DHT11 GND
+    │
+HC-SR04 GND
+    │
+MQ GND
+    │
+HW-038 GND
+    │
+Battery -
