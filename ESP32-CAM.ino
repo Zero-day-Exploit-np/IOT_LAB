@@ -200,31 +200,32 @@ bool initCamera() {
   // PSRAM configuration
   // ----------------------------------------------------------
 
-  if (psramFound()) {
+
+
+if (psramFound()) {
 
     Serial.println("PSRAM detected");
 
-    config.frame_size = FRAMESIZE_VGA;
+    config.frame_size = FRAMESIZE_QVGA;   // 320x240
 
-    config.jpeg_quality = 10;
+    config.jpeg_quality = 15;
 
     config.fb_count = 2;
 
     config.fb_location = CAMERA_FB_IN_PSRAM;
 
-  } else {
+} else {
 
     Serial.println("PSRAM NOT detected");
 
-    config.frame_size = FRAMESIZE_QVGA;
+    config.frame_size = FRAMESIZE_QVGA;   // 320x240
 
-    config.jpeg_quality = 12;
+    config.jpeg_quality = 15;
 
     config.fb_count = 1;
 
     config.fb_location = CAMERA_FB_IN_DRAM;
-  }
-
+}
   config.grab_mode = CAMERA_GRAB_LATEST;
 
   // ----------------------------------------------------------
@@ -254,20 +255,9 @@ bool initCamera() {
   sensor_t* sensor = esp_camera_sensor_get();
 
   if (sensor != nullptr) {
-
-    sensor->set_framesize(
-      sensor,
-      psramFound()
-        ? FRAMESIZE_VGA
-        : FRAMESIZE_QVGA
-    );
-
-    sensor->set_quality(
-      sensor,
-      psramFound()
-        ? 10
-        : 12
-    );
+  sensor->set_framesize(sensor, FRAMESIZE_QVGA);
+    sensor->set_quality(sensor, 15);
+   
   }
 
   Serial.println("Camera initialized successfully");
