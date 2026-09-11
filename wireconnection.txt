@@ -78,6 +78,17 @@ DHT11 GND
 HC-SR04 GND
     │
 MQ GND
+
+
+espcam ip 
+Web page:       http://172.17.40.60
+Status:         http://172.17.40.60/status
+WebSocket:      ws://172.17.40.60:81
+Camera stream:  http://172.17.40.60:82/stream
+
+
+motor 
+ http://172.17.40.50
     │
 HW-038 GND
     │
