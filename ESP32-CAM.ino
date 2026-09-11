@@ -150,6 +150,11 @@ bool initCamera() {
 
   // ----------------------------------------------------------
   // Camera clock
+  //
+  // NOTE: the camera OWNS LEDC_TIMER_0 / LEDC_CHANNEL_0 for its
+  // XCLK signal. The servo below is explicitly kept off timer 0
+  // (see allocateTimer calls in setup()) so the two never fight
+  // over the same hardware timer.
   // ----------------------------------------------------------
 
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -891,27 +896,8 @@ void setup() {
   delay(1000);
 
   // ==========================================================
-  // SERVO
-  // ==========================================================
-
-  cameraServo.setPeriodHertz(50);
-
-  cameraServo.attach(
-    SERVO_PIN,
-    500,
-    2400
-  );
-
-  cameraServo.write(90);
-
-  servoAngle = 90;
-
-  Serial.println(
-    "Servo initialized"
-  );
-
-  // ==========================================================
-  // CAMERA
+  // CAMERA (initialized FIRST so it claims LEDC_TIMER_0 /
+  // LEDC_CHANNEL_0 for XCLK before anything else touches LEDC)
   // ==========================================================
 
   cameraOK =
@@ -929,6 +915,36 @@ void setup() {
       "WiFi and WebSocket will still start."
     );
   }
+
+  // ==========================================================
+  // SERVO
+  //
+  // FIX: The camera owns LEDC timer 0 for its XCLK clock.
+  // ESP32Servo would otherwise also default to timer 0, and the
+  // two would repeatedly overwrite each other's PWM config —
+  // that's what caused "camera works OR servo works, not both".
+  // Reserving timers 1-3 keeps the servo off timer 0 entirely.
+  // ==========================================================
+
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+
+  cameraServo.setPeriodHertz(50);
+
+  cameraServo.attach(
+    SERVO_PIN,
+    500,
+    2400
+  );
+
+  cameraServo.write(90);
+
+  servoAngle = 90;
+
+  Serial.println(
+    "Servo initialized"
+  );
 
   // ==========================================================
   // WIFI
