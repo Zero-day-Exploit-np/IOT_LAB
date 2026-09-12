@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wi-Fi Smart Robot | Dashboard</title>
+<style>
+  :root{
+    --bg: #0b0f14;
+    --bg-alt: #0f151c;
+    --card: #141b23;
+    --card-alt: #182029;
+    --border: #232e3a;
+    --text: #e6edf3;
+    --text-dim: #8b9bab;
+    --accent: #22d3ee;
+    --accent-dim: #0e7490;
+    --green: #22c55e;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --purple: #a78bfa;
+    --radius: 14px;
+    --radius-sm: 9px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
+    color: var(--text);
+    font-family: "Segoe UI", Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body { min-height: 100vh; }
+
+  .wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 16px 16px 40px;
+  }
+
+  /* ---------- HEADER ---------- */
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+
+  header h1 {
+    font-size: 1.4rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: 0.3px;
+  }
+
+  header h1 .robot-emoji { font-size: 1.5rem; }
+
+  .status-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+  }
+
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 6px var(--red);
+    flex-shrink: 0;
+  }
+  .dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.warn { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+
+  /* ---------- LAYOUT ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 16px;
+  }
+  .full { grid-column: 1 / -1; }
+
+  @media (max-width: 980px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card h2 .badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--card-alt);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    margin-left: auto;
+  }
+  .card h2 .badge.online { color: var(--green); border-color: var(--green); }
+  .card h2 .badge.offline { color: var(--red); border-color: var(--red); }
+
+  /* ---------- CAMERA ---------- */
+  .cam-panel {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #000;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .cam-panel img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .cam-offline {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #0a0d11;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+  .cam-offline .icon { font-size: 2rem; opacity: 0.5; }
+  .cam-offline.hidden { display: none; }
+
+  /* ---------- MOTOR CONTROLS ---------- */
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 10px;
+    max-width: 340px;
+    margin: 0 auto;
+    aspect-ratio: 1 / 1;
+  }
+  .dpad-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 1.6rem;
+    user-select: none;
+    touch-action: none;
+    cursor: pointer;
+    transition: background 0.08s ease, transform 0.05s ease;
+  }
+  .dpad-btn:active, .dpad-btn.active {
+    background: var(--accent-dim);
+    transform: scale(0.96);
+  }
+  .dpad-btn.stop {
+    background: rgba(239,68,68,0.12);
+    border-color: var(--red);
+    color: var(--red);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .dpad-btn.stop:active { background: rgba(239,68,68,0.3); }
+  .dpad-f { grid-column: 2; grid-row: 1; }
+  .dpad-l { grid-column: 1; grid-row: 2; }
+  .dpad-s { grid-column: 2; grid-row: 2; }
+  .dpad-r { grid-column: 3; grid-row: 2; }
+  .dpad-b { grid-column: 2; grid-row: 3; }
+
+  .kbd-hint {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+  .kbd-hint kbd {
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.75rem;
+  }
+
+  /* ---------- SPEED ---------- */
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+    height: 6px;
+  }
+  .speed-val {
+    min-width: 46px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 0.9rem;
+  }
+
+  /* ---------- SENSORS ---------- */
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+  }
+  .sensor-card {
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    text-align: center;
+  }
+  .sensor-card .icon { font-size: 1.4rem; margin-bottom: 4px; }
+  .sensor-card .val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .sensor-card .label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  /* ---------- CHART ---------- */
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 260px;
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+  #trendChart {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    user-select: none;
+  }
+  .legend-item input { accent-color: var(--accent); cursor: pointer; }
+  .legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .legend-item.disabled { opacity: 0.4; }
+  .chart-hint {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+    opacity: 0.75;
+  }
+
+  /* ---------- SERVO ---------- */
+  .servo-btn-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 14px;
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.1s ease;
+  }
+  .btn:hover { background: var(--accent-dim); }
+  .btn:active { transform: scale(0.97); }
+  .btn.ghost {
+    background: transparent;
+    border-style: dashed;
+    color: var(--text-dim);
+  }
+
+  /* ---------- DEVICE STATUS ---------- */
+  .device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .device-box {
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+  }
+  .device-box .dtitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .device-box table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .device-box td {
+    padding: 3px 0;
+    color: var(--text-dim);
+  }
+  .device-box td.v {
+    text-align: right;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ---------- LOG ---------- */
+  #log {
+    background: #05080b;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    height: 170px;
+    overflow-y: auto;
+    font-family: "Consolas", "SF Mono", monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+  #log .line { white-space: pre-wrap; word-break: break-word; }
+  #log .t-info { color: var(--text-dim); }
+  #log .t-ok { color: var(--green); }
+  #log .t-err { color: var(--red); }
+  #log .t-warn { color: var(--amber); }
+
+  footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    margin-top: 20px;
+    opacity: 0.7;
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1><span class="robot-emoji">🤖</span> Wi-Fi Smart Robot</h1>
+    <div class="status-pills">
+      <div class="pill"><span class="dot" id="dotMotor"></span> Motor ESP32</div>
+      <div class="pill"><span class="dot" id="dotCam"></span> ESP32-CAM</div>
+      <div class="pill"><span class="dot" id="dotOverall"></span> Overall Connection</div>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT COLUMN -->
+    <div>
+      <!-- CAMERA -->
+      <div class="card">
+        <h2>📷 Live Camera <span class="badge offline" id="camBadge">OFFLINE</span></h2>
+        <div class="cam-panel">
+          <img id="camStream" alt="Camera Stream">
+          <div class="cam-offline" id="camOfflineOverlay">
+            <div class="icon">📵</div>
+            <div>Camera Offline</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SERVO CONTROL -->
+      <div class="card">
+        <h2>🎯 Servo Camera Control <span class="badge offline" id="wsBadge">WS OFFLINE</span></h2>
+        <div class="servo-btn-row">
+          <button class="btn" id="servoLeft">◀ LEFT</button>
+          <button class="btn" id="servoCenter">● CENTER</button>
+          <button class="btn" id="servoRight">RIGHT ▶</button>
+        </div>
+        <div class="speed-row">
+          <span style="color:var(--text-dim); font-size:0.85rem;">20°</span>
+          <input type="range" id="servoAngle" min="20" max="160" value="90">
+          <span style="color:var(--text-dim); font-size:0.85rem;">160°</span>
+          <span class="speed-val" id="servoAngleVal">90°</span>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn ghost" id="servoPing" style="flex:none;">Ping Servo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <!-- MOTOR CONTROL -->
+      <div class="card">
+        <h2>🕹️ Motor Control</h2>
+        <div class="dpad">
+          <div class="dpad-btn dpad-f" data-cmd="F">▲</div>
+          <div class="dpad-btn dpad-l" data-cmd="L">◀</div>
+          <div class="dpad-btn dpad-s stop" id="stopBtn">STOP</div>
+          <div class="dpad-btn dpad-r" data-cmd="R">▶</div>
+          <div class="dpad-btn dpad-b" data-cmd="B">▼</div>
+        </div>
+        <div class="kbd-hint">
+          <kbd>W</kbd>/<kbd>↑</kbd> Forward &nbsp; <kbd>S</kbd>/<kbd>↓</kbd> Backward &nbsp;
+          <kbd>A</kbd>/<kbd>←</kbd> Left &nbsp; <kbd>D</kbd>/<kbd>→</kbd> Right &nbsp; <kbd>Space</kbd> Stop
+        </div>
+
+        <div class="speed-row">
+          <span style="color:var(--text-dim); font-size:0.85rem;">Speed</span>
+          <input type="range" id="speedSlider" min="0" max="255" value="150">
+          <span class="speed-val" id="speedVal">150</span>
+        </div>
+      </div>
+
+      <!-- SENSORS -->
+      <div class="card">
+        <h2>📊 Sensor Dashboard</h2>
+        <div class="sensor-grid">
+          <div class="sensor-card">
+            <div class="icon">📏</div>
+            <div class="val" id="sDistance">--</div>
+            <div class="label">Distance (cm)</div>
+          </div>
+          <div class="sensor-card">
+            <div class="icon">🌡️</div>
+            <div class="val" id="sTemp">--</div>
+            <div class="label">Temp (°C)</div>
+          </div>
+          <div class="sensor-card">
+            <div class="icon">💧</div>
+            <div class="val" id="sHum">--</div>
+            <div class="label">Humidity (%)</div>
+          </div>
+          <div class="sensor-card">
+            <div class="icon">🧪</div>
+            <div class="val" id="sMq">--</div>
+            <div class="label">MQ Gas</div>
+          </div>
+          <div class="sensor-card">
+            <div class="icon">🚰</div>
+            <div class="val" id="sWater">--</div>
+            <div class="label">Water</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SENSOR TRENDS CHART -->
+    <div class="card full">
+      <h2>📈 Sensor Trends</h2>
+      <div class="chart-wrap">
+        <canvas id="trendChart"></canvas>
+      </div>
+      <div class="chart-legend" id="chartLegend">
+        <label class="legend-item" data-series="distance">
+          <input type="checkbox" checked><span class="legend-swatch" style="background:#22d3ee;"></span>Distance
+        </label>
+        <label class="legend-item" data-series="temperature">
+          <input type="checkbox" checked><span class="legend-swatch" style="background:#ef4444;"></span>Temperature
+        </label>
+        <label class="legend-item" data-series="humidity">
+          <input type="checkbox" checked><span class="legend-swatch" style="background:#a78bfa;"></span>Humidity
+        </label>
+        <label class="legend-item" data-series="mq">
+          <input type="checkbox" checked><span class="legend-swatch" style="background:#f59e0b;"></span>MQ Gas
+        </label>
+        <label class="legend-item" data-series="water">
+          <input type="checkbox" checked><span class="legend-swatch" style="background:#22c55e;"></span>Water
+        </label>
+      </div>
+      <div class="chart-hint">Each series is auto-scaled to its own min/max over the last 60 readings so trends stay visible regardless of raw sensor units. Toggle a series off using its checkbox.</div>
+    </div>
+
+    <!-- DEVICE STATUS -->
+    <div class="card full">
+      <h2>🧭 Device Status</h2>
+      <div class="device-grid">
+        <div class="device-box">
+          <div class="dtitle"><span class="dot" id="dotMotor2"></span> Motor ESP32</div>
+          <table>
+            <tr><td>Status</td><td class="v" id="motorStatusText">OFFLINE</td></tr>
+            <tr><td>IP Address</td><td class="v">172.17.40.50</td></tr>
+            <tr><td>Uptime</td><td class="v" id="motorUptime">--</td></tr>
+            <tr><td>RSSI</td><td class="v" id="motorRssi">--</td></tr>
+          </table>
+        </div>
+        <div class="device-box">
+          <div class="dtitle"><span class="dot" id="dotCam2"></span> ESP32-CAM</div>
+          <table>
+            <tr><td>Status</td><td class="v" id="camStatusText">OFFLINE</td></tr>
+            <tr><td>IP Address</td><td class="v">172.17.40.60</td></tr>
+            <tr><td>RSSI</td><td class="v" id="camRssi">--</td></tr>
+            <tr><td>Servo Angle</td><td class="v" id="camServoAngle">--</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="card full">
+      <h2>🖥️ System Log</h2>
+      <div id="log"></div>
+    </div>
+
+  </div>
+
+  <footer>ESP32 Wi-Fi Smart Robot Dashboard &middot; Runs entirely client-side &middot; SSID: sonu</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= CONFIG ================= */
+  const MOTOR_IP = "172.17.40.50";
+  const CAM_IP = "172.17.40.60";
+  const CAM_STREAM_PORT = 82;
+  const SERVO_WS_PORT = 81;
+
+  const MOTOR_BASE = "http://" + MOTOR_IP;
+  const CAM_BASE = "http://" + CAM_IP;
+  const CAM_STREAM_URL = "http://" + CAM_IP + ":" + CAM_STREAM_PORT + "/stream";
+  const SERVO_WS_URL = "ws://" + CAM_IP + ":" + SERVO_WS_PORT;
+
+  const FETCH_TIMEOUT_MS = 2500;
+  const DATA_POLL_MS = 1000;
+  const MOTOR_STATUS_POLL_MS = 3000;
+  const CAM_STATUS_POLL_MS = 3000;
+  const WS_RECONNECT_MS = 3000;
+
+  /* ================= STATE ================= */
+  let motorOnline = false;
+  let camOnline = false;      // true if stream OR status responds
+  let wsOnline = false;
+  let ws = null;
+  let wsReconnectTimer = null;
+  let angleDebounceTimer = null;
+  let activeKeys = [];        // ordered list of currently-held movement keys
+  let currentMotorCmd = null; // last command sent (F/B/L/R/S)
+
+  /* ================= DOM ================= */
+  const el = (id) => document.getElementById(id);
+  const dotMotor = el("dotMotor"), dotMotor2 = el("dotMotor2");
+  const dotCam = el("dotCam"), dotCam2 = el("dotCam2");
+  const dotOverall = el("dotOverall");
+  const camBadge = el("camBadge");
+  const wsBadge = el("wsBadge");
+  const camStream = el("camStream");
+  const camOfflineOverlay = el("camOfflineOverlay");
+  const motorStatusText = el("motorStatusText");
+  const camStatusText = el("camStatusText");
+  const motorUptime = el("motorUptime");
+  const motorRssi = el("motorRssi");
+  const camRssi = el("camRssi");
+  const camServoAngle = el("camServoAngle");
+  const logEl = el("log");
+  const speedSlider = el("speedSlider");
+  const speedVal = el("speedVal");
+  const servoAngleSlider = el("servoAngle");
+  const servoAngleVal = el("servoAngleVal");
+  const trendCanvas = el("trendChart");
+  const trendCtx = trendCanvas.getContext("2d");
+
+  /* ================= CHART STATE ================= */
+  const CHART_MAX_POINTS = 60;
+  const SERIES_META = {
+    distance:    { color: "#22d3ee", label: "Distance" },
+    temperature: { color: "#ef4444", label: "Temperature" },
+    humidity:    { color: "#a78bfa", label: "Humidity" },
+    mq:          { color: "#f59e0b", label: "MQ Gas" },
+    water:       { color: "#22c55e", label: "Water" }
+  };
+  const sensorHistory = { distance: [], temperature: [], humidity: [], mq: [], water: [] };
+  const seriesEnabled = { distance: true, temperature: true, humidity: true, mq: true, water: true };
+
+  function pushHistory(key, value) {
+    const arr = sensorHistory[key];
+    if (value === undefined || value === null || isNaN(value)) {
+      arr.push(null);
+    } else {
+      arr.push(Number(value));
+    }
+    while (arr.length > CHART_MAX_POINTS) arr.shift();
+  }
+
+  /* ================= LOGGING ================= */
+  const MAX_LOG_LINES = 250;
+  function log(msg, type) {
+    type = type || "info";
+    const time = new Date().toLocaleTimeString();
+    const line = document.createElement("div");
+    line.className = "line t-" + type;
+    line.textContent = "[" + time + "] " + msg;
+    logEl.appendChild(line);
+    while (logEl.children.length > MAX_LOG_LINES) {
+      logEl.removeChild(logEl.firstChild);
+    }
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  /* ================= STATUS UI ================= */
+  function setDot(dotA, dotB, state) {
+    // state: "online" | "offline" | "warn"
+    [dotA, dotB].forEach((d) => {
+      if (!d) return;
+      d.classList.remove("online", "warn");
+      if (state === "online") d.classList.add("online");
+      else if (state === "warn") d.classList.add("warn");
+    });
+  }
+
+  function updateMotorUI() {
+    setDot(dotMotor, dotMotor2, motorOnline ? "online" : "offline");
+    motorStatusText.textContent = motorOnline ? "ONLINE" : "OFFLINE";
+    updateOverall();
+  }
+
+  function updateCamUI() {
+    setDot(dotCam, dotCam2, camOnline ? "online" : "offline");
+    camStatusText.textContent = camOnline ? "ONLINE" : "OFFLINE";
+    camBadge.textContent = camOnline ? "ONLINE" : "OFFLINE";
+    camBadge.className = "badge " + (camOnline ? "online" : "offline");
+    updateOverall();
+  }
+
+  function updateWsUI() {
+    wsBadge.textContent = wsOnline ? "WS ONLINE" : "WS OFFLINE";
+    wsBadge.className = "badge " + (wsOnline ? "online" : "offline");
+    updateOverall();
+  }
+
+  function updateOverall() {
+    if (motorOnline && camOnline) {
+      setDot(dotOverall, null, "online");
+    } else if (motorOnline || camOnline || wsOnline) {
+      setDot(dotOverall, null, "warn");
+    } else {
+      setDot(dotOverall, null, "offline");
+    }
+  }
+
+  /* ================= CHART DRAWING ================= */
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = trendCanvas.parentElement.getBoundingClientRect();
+    trendCanvas.width = Math.max(1, Math.round(rect.width * dpr));
+    trendCanvas.height = Math.max(1, Math.round(rect.height * dpr));
+    trendCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawChart();
+  }
+
+  function drawChart() {
+    const rect = trendCanvas.parentElement.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+    const padL = 8, padR = 8, padT = 10, padB = 8;
+
+    trendCtx.clearRect(0, 0, w, h);
+
+    // grid lines
+    trendCtx.strokeStyle = "rgba(255,255,255,0.06)";
+    trendCtx.lineWidth = 1;
+    const gridRows = 4;
+    for (let i = 0; i <= gridRows; i++) {
+      const y = padT + ((h - padT - padB) / gridRows) * i;
+      trendCtx.beginPath();
+      trendCtx.moveTo(padL, y);
+      trendCtx.lineTo(w - padR, y);
+      trendCtx.stroke();
+    }
+
+    const activeSeries = Object.keys(SERIES_META).filter((k) => seriesEnabled[k]);
+    if (activeSeries.length === 0) return;
+
+    activeSeries.forEach((key) => {
+      const data = sensorHistory[key];
+      const points = data.filter((v) => v !== null && v !== undefined);
+      if (points.length < 2) return;
+
+      let min = Math.min.apply(null, points);
+      let max = Math.max.apply(null, points);
+      if (min === max) { min -= 1; max += 1; } // avoid flat-line div-by-zero
+
+      const n = data.length;
+      const stepX = n > 1 ? (w - padL - padR) / (CHART_MAX_POINTS - 1) : 0;
+      const offsetX = (CHART_MAX_POINTS - n) * stepX; // right-align newest data
+
+      trendCtx.beginPath();
+      trendCtx.strokeStyle = SERIES_META[key].color;
+      trendCtx.lineWidth = 2;
+      trendCtx.lineJoin = "round";
+
+      let started = false;
+      data.forEach((v, i) => {
+        const x = padL + offsetX + i * stepX;
+        if (v === null || v === undefined) { started = false; return; }
+        const norm = (v - min) / (max - min);
+        const y = padT + (1 - norm) * (h - padT - padB);
+        if (!started) { trendCtx.moveTo(x, y); started = true; }
+        else { trendCtx.lineTo(x, y); }
+      });
+      trendCtx.stroke();
+    });
+  }
+
+  document.querySelectorAll("#chartLegend .legend-item").forEach((item) => {
+    const key = item.dataset.series;
+    const checkbox = item.querySelector("input");
+    checkbox.addEventListener("change", () => {
+      seriesEnabled[key] = checkbox.checked;
+      item.classList.toggle("disabled", !checkbox.checked);
+      drawChart();
+    });
+  });
+
+  window.addEventListener("resize", () => {
+    clearTimeout(window.__chartResizeTimer);
+    window.__chartResizeTimer = setTimeout(resizeCanvas, 150);
+  });
+
+  /* ================= FETCH HELPER ================= */
+  function fetchWithTimeout(url, opts, timeoutMs) {
+    opts = opts || {};
+    timeoutMs = timeoutMs || FETCH_TIMEOUT_MS;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, Object.assign({}, opts, { signal: controller.signal }))
+      .finally(() => clearTimeout(timer));
+  }
+
+  /* ================= MOTOR COMMANDS ================= */
+  function sendMotorCmd(cmd) {
+    // cmd: F, B, L, R, S
+    if (currentMotorCmd === cmd) return; // avoid redundant spam
+    currentMotorCmd = cmd;
+    highlightActiveButton(cmd);
+    fetchWithTimeout(MOTOR_BASE + "/" + cmd, { mode: "cors" })
+      .then(() => {
+        if (!motorOnline) { motorOnline = true; updateMotorUI(); log("Motor ESP32 connected", "ok"); }
+        log("Motor command sent: " + cmd, "info");
+      })
+      .catch((err) => {
+        if (motorOnline) { motorOnline = false; updateMotorUI(); log("Motor ESP32 disconnected", "err"); }
+        log("Motor command failed (" + cmd + "): " + (err && err.message ? err.message : err), "err");
+      });
+  }
+
+  function highlightActiveButton(cmd) {
+    document.querySelectorAll(".dpad-btn[data-cmd]").forEach((b) => {
+      b.classList.toggle("active", b.dataset.cmd === cmd);
+    });
+  }
+
+  function stopMotor() {
+    currentMotorCmd = null;
+    highlightActiveButton(null);
+    fetchWithTimeout(MOTOR_BASE + "/S", { mode: "cors" })
+      .then(() => {
+        if (!motorOnline) { motorOnline = true; updateMotorUI(); log("Motor ESP32 connected", "ok"); }
+      })
+      .catch((err) => {
+        if (motorOnline) { motorOnline = false; updateMotorUI(); log("Motor ESP32 disconnected", "err"); }
+      });
+    log("Motor command sent: S (stop)", "warn");
+  }
+
+  /* ---- D-Pad pointer control (mouse + touch unified) ---- */
+  document.querySelectorAll(".dpad-btn[data-cmd]").forEach((btn) => {
+    const cmd = btn.dataset.cmd;
+
+    const press = (e) => {
+      e.preventDefault();
+      sendMotorCmd(cmd);
+    };
+    const release = (e) => {
+      e.preventDefault();
+      if (currentMotorCmd === cmd) stopMotor();
+    };
+
+    btn.addEventListener("pointerdown", press);
+    btn.addEventListener("pointerup", release);
+    btn.addEventListener("pointercancel", release);
+    btn.addEventListener("pointerleave", release);
+    btn.addEventListener("contextmenu", (e) => e.preventDefault());
+  });
+
+  el("stopBtn").addEventListener("pointerdown", (e) => { e.preventDefault(); stopMotor(); });
+
+  /* ---- Focus / visibility safety stop ---- */
+  window.addEventListener("blur", () => {
+    if (currentMotorCmd) {
+      log("Window lost focus — forcing STOP", "warn");
+      stopMotor();
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && currentMotorCmd) {
+      log("Tab hidden — forcing STOP", "warn");
+      stopMotor();
+    }
+    activeKeys = [];
+  });
+
+  /* ---- Keyboard control ---- */
+  const KEY_MAP = {
+    "w": "F", "arrowup": "F",
+    "s": "B", "arrowdown": "B",
+    "a": "L", "arrowleft": "L",
+    "d": "R", "arrowright": "R"
+  };
+
+  window.addEventListener("keydown", (e) => {
+    const key = e.key.toLowerCase();
+
+    if (key === " " || e.code === "Space") {
+      e.preventDefault();
+      activeKeys = [];
+      stopMotor();
+      return;
+    }
+
+    const cmd = KEY_MAP[key];
+    if (!cmd) return;
+    e.preventDefault();
+
+    if (e.repeat) return; // prevent repeated commands while held
+
+    if (!activeKeys.includes(key)) activeKeys.push(key);
+    sendMotorCmd(cmd);
+  });
+
+  window.addEventListener("keyup", (e) => {
+    const key = e.key.toLowerCase();
+    if (!(key in KEY_MAP)) return;
+    e.preventDefault();
+
+    activeKeys = activeKeys.filter((k) => k !== key);
+
+    if (activeKeys.length === 0) {
+      stopMotor();
+    } else {
+      // fall back to the most recently pressed remaining key
+      const lastKey = activeKeys[activeKeys.length - 1];
+      sendMotorCmd(KEY_MAP[lastKey]);
+    }
+  });
+
+  /* ================= SPEED CONTROL ================= */
+  let speedDebounce = null;
+  speedSlider.addEventListener("input", () => {
+    speedVal.textContent = speedSlider.value;
+    clearTimeout(speedDebounce);
+    speedDebounce = setTimeout(() => {
+      const v = speedSlider.value;
+      fetchWithTimeout(MOTOR_BASE + "/speed?v=" + v, { mode: "cors" })
+        .then(() => log("Speed set to " + v, "info"))
+        .catch((err) => log("Failed to set speed: " + (err && err.message ? err.message : err), "err"));
+    }, 120);
+  });
+
+  /* ================= SENSOR DATA POLLING ================= */
+  function pollSensorData() {
+    fetchWithTimeout(MOTOR_BASE + "/data")
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (!motorOnline) { motorOnline = true; updateMotorUI(); log("Motor ESP32 connected", "ok"); }
+        el("sDistance").textContent = (data.distance !== undefined && data.distance !== null) ? data.distance : "--";
+        el("sTemp").textContent = (data.temperature !== undefined && data.temperature !== null) ? data.temperature : "--";
+        el("sHum").textContent = (data.humidity !== undefined && data.humidity !== null) ? data.humidity : "--";
+        el("sMq").textContent = (data.mq !== undefined && data.mq !== null) ? data.mq : "--";
+        el("sWater").textContent = (data.water !== undefined && data.water !== null) ? data.water : "--";
+
+        pushHistory("distance", data.distance);
+        pushHistory("temperature", data.temperature);
+        pushHistory("humidity", data.humidity);
+        pushHistory("mq", data.mq);
+        pushHistory("water", data.water);
+        drawChart();
+      })
+      .catch((err) => {
+        if (motorOnline) { motorOnline = false; updateMotorUI(); log("Motor ESP32 disconnected", "err"); }
+        log("Sensor data fetch error: " + (err && err.message ? err.message : err), "err");
+        ["sDistance","sTemp","sHum","sMq","sWater"].forEach((id) => el(id).textContent = "--");
+
+        pushHistory("distance", null);
+        pushHistory("temperature", null);
+        pushHistory("humidity", null);
+        pushHistory("mq", null);
+        pushHistory("water", null);
+        drawChart();
+      });
+  }
+  setInterval(pollSensorData, DATA_POLL_MS);
+  pollSensorData();
+
+  /* ================= MOTOR /status POLLING ================= */
+  function pollMotorStatus() {
+    fetchWithTimeout(MOTOR_BASE + "/status")
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json().catch(() => ({}));
+      })
+      .then((data) => {
+        if (!motorOnline) { motorOnline = true; updateMotorUI(); log("Motor ESP32 connected", "ok"); }
+        motorUptime.textContent = (data && (data.uptime !== undefined)) ? data.uptime : "--";
+        motorRssi.textContent = (data && (data.rssi !== undefined)) ? (data.rssi + " dBm") : "--";
+      })
+      .catch(() => {
+        if (motorOnline) { motorOnline = false; updateMotorUI(); log("Motor ESP32 disconnected", "err"); }
+      });
+  }
+  setInterval(pollMotorStatus, MOTOR_STATUS_POLL_MS);
+  pollMotorStatus();
+
+  /* ================= CAMERA STREAM ================= */
+  let camStreamOK = false;
+  let camRetryTimer = null;
+
+  function loadCamStream() {
+    camStream.src = CAM_STREAM_URL + (CAM_STREAM_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+  }
+
+  camStream.addEventListener("load", () => {
+    if (!camStreamOK) {
+      camStreamOK = true;
+      camOfflineOverlay.classList.add("hidden");
+      if (!camOnline) { camOnline = true; updateCamUI(); }
+      log("ESP32-CAM stream connected", "ok");
+    }
+  });
+
+  camStream.addEventListener("error", () => {
+    if (camStreamOK) log("ESP32-CAM stream lost", "err");
+    camStreamOK = false;
+    camOfflineOverlay.classList.remove("hidden");
+    clearTimeout(camRetryTimer);
+    camRetryTimer = setTimeout(loadCamStream, 3000);
+  });
+
+  loadCamStream();
+
+  /* ================= CAMERA /status POLLING ================= */
+  function pollCamStatus() {
+    fetchWithTimeout(CAM_BASE + "/status")
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json().catch(() => ({}));
+      })
+      .then((data) => {
+        if (!camOnline) { camOnline = true; updateCamUI(); log("ESP32-CAM status link connected", "ok"); }
+        camRssi.textContent = (data && data.rssi !== undefined) ? (data.rssi + " dBm") : "--";
+        if (data && data.servoAngle !== undefined) {
+          camServoAngle.textContent = data.servoAngle + "°";
+        }
+      })
+      .catch(() => {
+        // Don't flip camOnline false purely on status failure if the video stream is alive
+        if (!camStreamOK && camOnline) {
+          camOnline = false;
+          updateCamUI();
+          log("ESP32-CAM status link lost", "err");
+        }
+      });
+  }
+  setInterval(pollCamStatus, CAM_STATUS_POLL_MS);
+  pollCamStatus();
+
+  /* ================= SERVO WEBSOCKET ================= */
+  function connectServoWS() {
+    try {
+      ws = new WebSocket(SERVO_WS_URL);
+    } catch (err) {
+      log("WebSocket creation failed: " + err.message, "err");
+      scheduleWSReconnect();
+      return;
+    }
+
+    ws.onopen = () => {
+      wsOnline = true;
+      updateWsUI();
+      log("Servo WebSocket connected", "ok");
+      clearTimeout(wsReconnectTimer);
+    };
+
+    ws.onmessage = (event) => {
+      const msg = (event.data || "").toString().trim();
+      log("Servo message received: " + msg, "info");
+      if (msg.startsWith("SERVO:")) {
+        const val = parseInt(msg.split(":")[1], 10);
+        if (!isNaN(val)) {
+          servoAngleSlider.value = val;
+          servoAngleVal.textContent = val + "°";
+          camServoAngle.textContent = val + "°";
+        }
+      }
+    };
+
+    ws.onerror = () => {
+      log("Servo WebSocket error", "err");
+    };
+
+    ws.onclose = () => {
+      if (wsOnline) log("Servo WebSocket disconnected", "err");
+      wsOnline = false;
+      updateWsUI();
+      scheduleWSReconnect();
+    };
+  }
+
+  function scheduleWSReconnect() {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = setTimeout(connectServoWS, WS_RECONNECT_MS);
+  }
+
+  function sendServoCmd(cmd) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(cmd);
+      log("Servo command sent: " + cmd, "info");
+    } else {
+      log("Servo command not sent (WebSocket offline): " + cmd, "warn");
+    }
+  }
+
+  el("servoLeft").addEventListener("click", () => sendServoCmd("LEFT"));
+  el("servoCenter").addEventListener("click", () => sendServoCmd("CENTER"));
+  el("servoRight").addEventListener("click", () => sendServoCmd("RIGHT"));
+  el("servoPing").addEventListener("click", () => sendServoCmd("PING"));
+
+  servoAngleSlider.addEventListener("input", () => {
+    servoAngleVal.textContent = servoAngleSlider.value + "°";
+    clearTimeout(angleDebounceTimer);
+    angleDebounceTimer = setTimeout(() => {
+      sendServoCmd("ANGLE:" + servoAngleSlider.value);
+    }, 100);
+  });
+
+  connectServoWS();
+
+  /* ================= INIT ================= */
+  resizeCanvas();
+  updateMotorUI();
+  updateCamUI();
+  updateWsUI();
+  log("Dashboard started", "ok");
+  log("Motor target: " + MOTOR_BASE, "info");
+  log("Camera target: " + CAM_BASE + " | Stream port " + CAM_STREAM_PORT, "info");
+  log("Servo WebSocket target: " + SERVO_WS_URL, "info");
+
+})();
+</script>
+</body>
+</html>
